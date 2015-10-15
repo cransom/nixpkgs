@@ -265,7 +265,7 @@ let
 
     installPhase = ''
       mkdir -p $bundle
-      export BUNDLE_GEMFILE=$bundle/Gemfile
+      export BUNDLE_GEMFILE=$bundle/Gemfile-${name}
       cp ${gemfile} $BUNDLE_GEMFILE
       cp ${purifiedLockfile} $BUNDLE_GEMFILE.lock
 
@@ -318,7 +318,7 @@ let
           name = "interactive-${name}-environment";
           nativeBuildInputs = [ ruby derivation ];
           shellHook = ''
-            export BUNDLE_GEMFILE=${derivation.bundle}/Gemfile
+            export BUNDLE_GEMFILE=${derivation.bundle}/Gemfile-${name}
             export GEM_HOME=${derivation}/${ruby.gemPath}
             export NIX_BUNDLER_GEMPATH=${bundler}/${ruby.gemPath}
             export GEM_PATH=$NIX_BUNDLER_GEMPATH:$GEM_HOME
