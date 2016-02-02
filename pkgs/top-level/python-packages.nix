@@ -1128,6 +1128,35 @@ in modules // {
     };
   };
 
+  aws_shell = buildPythonPackage rec {
+    name = "aws-shell-${version}";
+    version = "0.1.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "awslabs";
+      repo = "aws-shell";
+      rev = "${version}";
+      sha256 = "0z9aa08svrb4b8r71r4kln72lrn0rlx5j5iijkibnfniikc4v439";
+    };
+    propagatedBuildInputs = with self; [
+      configobj prompt_toolkit_52 awscli boto3 pygments sqlite3
+    ];
+
+    prompt_toolkit_52 = self.prompt_toolkit.overrideDerivation (self: rec {
+      name = "prompt_toolkit-${version}";
+      version = "0.52";
+      src = pkgs.fetchurl {
+        sha256 = "00h9ldqmb33nhg2kpks7paldf3n3023ipp124alwp96yz16s7f1m";
+        url = "https://pypi.python.org/packages/source/p/prompt_toolkit/${name}.tar.gz";
+      };});
+
+    meta = {
+      homepage = https://github.com/awslabs/aws-shell;
+      description = "An integrated shell for working with the AWS CLI.";
+      license = licenses.asl20;
+      maintainers = [ ];
+    };
+  };
+
   azure = buildPythonPackage rec {
     version = "0.11.0";
     name = "azure-${version}";
@@ -14370,10 +14399,10 @@ in modules // {
 
   prompt_toolkit = buildPythonPackage rec {
     name = "prompt_toolkit-${version}";
-    version = "0.46";
+    version = "0.52";
 
     src = pkgs.fetchurl {
-      sha256 = "1yq9nis1b2rgpndi2rqh4divf6j22jjva83r5z8jf7iffywmr8hs";
+      sha256 = "00h9ldqmb33nhg2kpks7paldf3n3023ipp124alwp96yz16s7f1m";
       url = "https://pypi.python.org/packages/source/p/prompt_toolkit/${name}.tar.gz";
     };
 
@@ -23594,5 +23623,7 @@ in modules // {
       maintainers = [ maintainers.makefu ];
     };
   };
+
+
 
 }
