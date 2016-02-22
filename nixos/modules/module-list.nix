@@ -27,6 +27,7 @@
   ./config/users-groups.nix
   ./config/vpnc.nix
   ./config/zram.nix
+  ./hardware/blink1.nix
   ./hardware/all-firmware.nix
   ./hardware/cpu/amd-microcode.nix
   ./hardware/cpu/intel-microcode.nix
