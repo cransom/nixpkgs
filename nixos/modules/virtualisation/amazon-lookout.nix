@@ -44,7 +44,15 @@ let cfg = config.ec2; in
 
     boot.initrd.network.enable = true;
 
-    #Fetch meta-data and mount a swap device if presented
+    # Mount all formatted ephemeral disks and activate all swap devices.
+    # We cannot do this with the ‘fileSystems’ and ‘swapDevices’ options
+    # because the set of devices is dependent on the instance type
+    # (e.g. "m1.large" has one ephemeral filesystem and one swap device,
+    # while "m1.large" has two ephemeral filesystems and no swap
+    # devices).  Also, put /tmp and /var on /disk0, since it has a lot
+    # more space than the root device.  Similarly, "move" /nix to /disk0
+    # by layering a unionfs-fuse mount on top of it so we have a lot more space for
+    # Nix operations.
     boot.initrd.postMountCommands =
       ''
         metaDir=$targetRoot/etc/ec2-metadata

@@ -18,7 +18,7 @@ with lib;
     configFile = pkgs.writeText "configuration.nix"
       ''
         {
-          imports = [ <nixpkgs/nixos/modules/virtualisation/amazon-image.nix> ];
+          imports = [ <nixpkgs/nixos/modules/virtualisation/amazon-lookout.nix> ];
           ${optionalString config.ec2.hvm ''
             ec2.hvm = true;
           ''}
