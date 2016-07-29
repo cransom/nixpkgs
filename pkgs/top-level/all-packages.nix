@@ -17147,6 +17147,8 @@ in
 
   slock = callPackage ../misc/screensavers/slock { };
 
+  smokeping = callPackage ../tools/networking/smokeping { };
+
   snapraid = callPackage ../tools/filesystems/snapraid { };
 
   soundOfSorting = callPackage ../misc/sound-of-sorting { };
