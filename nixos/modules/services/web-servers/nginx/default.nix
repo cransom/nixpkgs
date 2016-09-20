@@ -357,7 +357,6 @@ in
   };
 
   config = mkIf cfg.enable {
-    # TODO: test user supplied config file pases syntax test
 
     systemd.services.nginx = {
       description = "Nginx Web Server";
@@ -368,6 +367,7 @@ in
         mkdir -p ${cfg.stateDir}/logs
         chmod 700 ${cfg.stateDir}
         chown -R ${cfg.user}:${cfg.group} ${cfg.stateDir}
+        ${cfg.package}/bin/nginx -c ${configFile} -p ${cfg.stateDir} -t
         '';
       serviceConfig = {
         ExecStart = "${cfg.package}/bin/nginx -c ${configFile} -p ${cfg.stateDir}";
