@@ -1,6 +1,6 @@
 { stdenv, lib, fetchFromGitHub, pkgconfig, bazel, c-ares, backward-cpp
 , libevent, gtest, gperftools, http-parser, lightstep-tracer-cpp
-, nghttp2, protobuf3_2, tclap, rapidjson, spdlog, boringssl, buildEnv
+, nghttp2, protobuf3_2, tclap, rapidjson, spdlog, boringssl, libyamlcpp, buildEnv
 }:
 
 let
@@ -97,6 +97,11 @@ let
       includes = ''["include"]'';
     };
 
+    yaml_cpp = {
+      pkg = libyamlcpp;
+      hdrs = ''glob(["include/libyaml/**/*.h"])'';
+      includes = ''["include"]'';
+    };
     spdlog = {
       pkg = spdlog;
       name = "spdlog";
@@ -204,6 +209,7 @@ let
     protobuf3_2
     tclap
     rapidjson
+    libyamlcpp
     spdlog
     boringssl
   ];
@@ -216,13 +222,13 @@ in
 
 stdenv.mkDerivation rec {
   name = "envoy-${version}";
-  version = "1.3.0";
+  version = "1.4.0";
 
   src = fetchFromGitHub {
     owner = "lyft";
     repo = "envoy";
     rev = "v${version}";
-    sha256 = "0j1c9lyvncyhiq3kyhx91ckcjd2h68x56js7xb6ni6bzxinv6zb6";
+    sha256 = "1hl9i5k6vdv9cskp96vprhyanns6dsd9gjrpm2qdi48dn5kaarrh";
   };
 
   nativeBuildInputs = [

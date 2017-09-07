@@ -1,41 +1,46 @@
-diff --git a/bazel/cc_configure.bzl b/bazel/cc_configure.bzl
-index 8a7a69c4f..75526520c 100644
---- a/bazel/cc_configure.bzl
-+++ b/bazel/cc_configure.bzl
-@@ -292,6 +292,8 @@ def _crosstool_content(repository_ctx, cc, cpu_value, darwin):
-           "-fstack-protector",
-           # All warnings are enabled. Maybe enable -Werror as well?
-           "-Wall",
-+
-+          "-Wno-error=strict-aliasing"
-           # Enable a few more warnings that aren't part of -Wall.
-       ] + (["-Wthread-safety", "-Wself-assign"] if darwin else [
-           "-B" + str(repository_ctx.path(cc).dirname),
-@@ -365,10 +367,6 @@ def _opt_content(darwin):
-           # Profile first and / or use FDO if you need better performance than this.
-           "-O2",
- 
--          # Security hardening on by default.
--          # Conservative choice; -D_FORTIFY_SOURCE=2 may be unsafe in some cases.
--          "-D_FORTIFY_SOURCE=1",
--
-           # Disable assertions
-           "-DNDEBUG",
- 
 diff --git a/bazel/envoy_build_system.bzl b/bazel/envoy_build_system.bzl
-index f17671035..7938047bd 100644
+index 94c73ba4c..a398b9a29 100644
 --- a/bazel/envoy_build_system.bzl
 +++ b/bazel/envoy_build_system.bzl
-@@ -131,11 +131,9 @@ def envoy_cc_binary(name,
+@@ -52,8 +52,6 @@ def envoy_linkopts():
              # --build-id and avoid doing the following.
              '-Wl,--build-id=md5',
              '-Wl,--hash-style=gnu',
 -            "-static-libstdc++",
 -            "-static-libgcc",
          ],
+     })
+
+@@ -170,7 +168,7 @@ def envoy_cc_binary(name,
+         copts = envoy_copts(repository),
+         linkopts = envoy_linkopts(),
          testonly = testonly,
 -        linkstatic = 1,
 +        linkstatic = 0,
          visibility = visibility,
          malloc = tcmalloc_external_dep(repository),
          # See above comment on MD5 hash, this is another "force MD5 stamps" to make sure our
+diff --git a/bazel/unix_cc_configure.bzl b/bazel/unix_cc_configure.bzl
+index 9702dbe6b..37d4f4cb6 100644
+--- a/bazel/unix_cc_configure.bzl
++++ b/bazel/unix_cc_configure.bzl
+@@ -226,6 +226,7 @@ def _crosstool_content(repository_ctx, cc, cpu_value, darwin):
+           "-fstack-protector",
+           # All warnings are enabled. Maybe enable -Werror as well?
+           "-Wall",
++          "-Wno-error=strict-aliasing",
+           # Enable a few more warnings that aren't part of -Wall.
+       ] + (["-Wthread-safety", "-Wself-assign"] if darwin else [
+           "-B" + escape_string(str(repository_ctx.path(cc).dirname)),
+@@ -260,10 +261,6 @@ def _opt_content(darwin):
+           # Profile first and / or use FDO if you need better performance than this.
+           "-O2",
+
+-          # Security hardening on by default.
+-          # Conservative choice; -D_FORTIFY_SOURCE=2 may be unsafe in some cases.
+-          "-D_FORTIFY_SOURCE=1",
+-
+           # Disable assertions
+           "-DNDEBUG",
+
+
