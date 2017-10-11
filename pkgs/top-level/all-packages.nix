@@ -14400,6 +14400,8 @@ with pkgs;
     inherit (gnome2) gnomedocutils libgnome libglade libgnomeui scrollkeeper;
   };
 
+  etherpad-lite = callPackage ../servers/web-apps/etherpad-lite { };
+
   evilvte = callPackage ../applications/misc/evilvte {
     configH = config.evilvte.config or "";
   };
