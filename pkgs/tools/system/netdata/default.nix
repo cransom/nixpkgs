@@ -1,7 +1,7 @@
 { stdenv, fetchFromGitHub, autoreconfHook, zlib, pkgconfig, libuuid, libcap }:
 
 stdenv.mkDerivation rec{
-  version = "1.8.0";
+  version = "1.9.0";
   name = "netdata-${version}";
 
   src = fetchFromGitHub {
