@@ -23425,7 +23425,7 @@ in
   };
   datadog-process-agent = callPackage ../tools/networking/dd-agent/datadog-process-agent.nix { };
   datadog-integrations-core = extras: callPackage ../tools/networking/dd-agent/integrations-core.nix {
-    python = python27;
+    python = python3;
     extraIntegrations = extras;
   };
 

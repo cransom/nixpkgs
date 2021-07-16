@@ -2,19 +2,19 @@
 
 let
   # keep this in sync with github.com/DataDog/agent-payload dependency
-  payloadVersion = "4.7.1";
+  payloadVersion = "v4.78.0";
   python = pythonPackages.python;
 
 in buildGoPackage rec {
   pname = "datadog-agent";
-  version = "6.11.2";
+  version = "7.29.1";
   owner   = "DataDog";
   repo    = "datadog-agent";
 
   src = fetchFromGitHub {
     inherit owner repo;
     rev    = version;
-    sha256 = "1dwdiaf357l9c6b2cps5mdyfma3c1mp96zzxg1826fvz3x8ix68z";
+    sha256 = "1s3mj857v2l63jbsy4nrvfap53f3bx0m88c3bi7430sfd59lsds6";
   };
 
   subPackages = [
@@ -71,7 +71,6 @@ in buildGoPackage rec {
   meta = with lib; {
     description = ''
       Event collector for the DataDog analysis service
-      -- v6 new golang implementation.
     '';
     homepage    = "https://www.datadoghq.com";
     license     = licenses.bsd3;
