@@ -11,6 +11,7 @@
 , libXcursor
 , freetype
 , alsa-lib
+, Accelerate
 , Cocoa
 , WebKit
 , CoreServices
@@ -38,7 +39,7 @@ stdenv.mkDerivation rec {
     repo = "Fire";
     rev = "v${version}";
     fetchSubmodules = true;
-    sha256 = "sha256-X3pzTrNd0G6BouCDkr3dukQTFDzZ7qblIYxFQActKGE=";
+    hash = "sha256-X3pzTrNd0G6BouCDkr3dukQTFDzZ7qblIYxFQActKGE=";
   };
 
   patches = [
@@ -48,7 +49,6 @@ stdenv.mkDerivation rec {
   postPatch = ''
     # 1. Remove hardcoded LTO flags: needs extra setup on Linux,
     #    possibly broken on Darwin
-    #    https://github.com/NixOS/nixpkgs/issues/19098
     # 2. Disable automatic copying of built plugins during buildPhase, it defaults
     #    into user home and we want to have building & installing separated.
     sed -i \
@@ -76,6 +76,7 @@ stdenv.mkDerivation rec {
     freetype
     alsa-lib
   ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    Accelerate
     Cocoa
     WebKit
     CoreServices
@@ -103,7 +104,7 @@ stdenv.mkDerivation rec {
   '';
 
   # Fails to find fp.h on its own
-  NIX_CFLAGS_COMPILE = lib.optionalString stdenv.hostPlatform.isDarwin "-isystem ${CoreServices}/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/CarbonCore.framework/Versions/Current/Headers/";
+  env.NIX_CFLAGS_COMPILE = lib.optionalString stdenv.hostPlatform.isDarwin "-isystem ${CoreServices}/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/CarbonCore.framework/Versions/Current/Headers/";
 
   doCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
 

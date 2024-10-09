@@ -1,38 +1,34 @@
 { config, lib, pkgs, ... }:
-
-with lib;
 let cfg = config.services.vector;
 
 in
 {
   options.services.vector = {
-    enable = mkEnableOption (lib.mdDoc "Vector");
+    enable = lib.mkEnableOption "Vector, a high-performance observability data pipeline";
 
-    journaldAccess = mkOption {
-      type = types.bool;
+    package = lib.mkPackageOption pkgs "vector" { };
+
+    journaldAccess = lib.mkOption {
+      type = lib.types.bool;
       default = false;
-      description = lib.mdDoc ''
+      description = ''
         Enable Vector to access journald.
       '';
     };
 
-    settings = mkOption {
+    settings = lib.mkOption {
       type = (pkgs.formats.json { }).type;
       default = { };
-      description = lib.mdDoc ''
+      description = ''
         Specify the configuration for Vector in Nix.
       '';
     };
   };
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
+    # for cli usage
+    environment.systemPackages = [ pkgs.vector ];
 
-    users.groups.vector = { };
-    users.users.vector = {
-      description = "Vector service user";
-      group = "vector";
-      isSystemUser = true;
-    };
     systemd.services.vector = {
       description = "Vector event and log aggregator";
       wantedBy = [ "multi-user.target" ];
@@ -51,16 +47,19 @@ in
             '';
         in
         {
-          ExecStart = "${pkgs.vector}/bin/vector --config ${validateConfig conf}";
-          User = "vector";
-          Group = "vector";
-          Restart = "no";
+          ExecStart = "${lib.getExe cfg.package} --config ${validateConfig conf}";
+          DynamicUser = true;
+          Restart = "always";
           StateDirectory = "vector";
           ExecReload = "${pkgs.coreutils}/bin/kill -HUP $MAINPID";
           AmbientCapabilities = "CAP_NET_BIND_SERVICE";
           # This group is required for accessing journald.
-          SupplementaryGroups = mkIf cfg.journaldAccess "systemd-journal";
+          SupplementaryGroups = lib.mkIf cfg.journaldAccess "systemd-journal";
         };
+      unitConfig = {
+        StartLimitIntervalSec = 10;
+        StartLimitBurst = 5;
+      };
     };
   };
 }

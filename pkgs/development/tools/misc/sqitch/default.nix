@@ -10,7 +10,7 @@
 
 let
   sqitch = perlPackages.AppSqitch;
-  modules = with perlPackages; [ ]
+  modules = with perlPackages; [ AlgorithmBackoff ]
     ++ lib.optional mysqlSupport DBDmysql
     ++ lib.optional postgresqlSupport DBDPg
     ++ lib.optional templateToolkitSupport TemplateToolkit;
@@ -20,7 +20,7 @@ stdenv.mkDerivation {
   pname = "sqitch";
   version = sqitch.version;
 
-  nativeBuildInputs = [ makeWrapper ] ++ lib.optional stdenv.isDarwin shortenPerlShebang;
+  nativeBuildInputs = [ makeWrapper ] ++ lib.optional stdenv.hostPlatform.isDarwin shortenPerlShebang;
 
   src = sqitch;
   dontBuild = true;
@@ -34,7 +34,7 @@ stdenv.mkDerivation {
         ln -s ${sqitch}/$d $out/$d
       fi
     done
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     shortenPerlShebang $out/bin/sqitch
   '';
   dontStrip = true;
@@ -44,5 +44,6 @@ stdenv.mkDerivation {
 
   meta = {
     inherit (sqitch.meta) description homepage license platforms;
+    mainProgram = "sqitch";
   };
 }

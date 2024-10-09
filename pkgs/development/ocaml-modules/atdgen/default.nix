@@ -1,10 +1,12 @@
-{ buildDunePackage, alcotest, atd, atdgen-codec-runtime, atdgen-runtime, biniou, re, yojson
+{ buildDunePackage, alcotest, atd, atdgen-codec-runtime, atdgen-runtime, re
 , python3
 }:
 
 buildDunePackage {
   pname = "atdgen";
   inherit (atdgen-codec-runtime) version src;
+
+  duneVersion = "3";
 
   buildInputs = [ atd re ];
 

@@ -6,16 +6,23 @@
 
 stdenv.mkDerivation rec {
   pname = "tpm2-abrmd";
-  version = "2.4.1";
+  version = "3.0.0";
 
   src = fetchFromGitHub {
     owner = "tpm2-software";
     repo = pname;
     rev = version;
-    sha256 = "0lsng4sb9ikfpp0scvl9wmh0zpjdmdf5bqbjnpfyh4gk25qxn9mw";
+    sha256 = "sha256-l0ncCMsStaeFACRU3Bt6F1zyiOTGY6wOHewA4AD58Ww=";
   };
 
-  nativeBuildInputs = [ pkg-config makeWrapper autoreconfHook autoconf-archive which ];
+  nativeBuildInputs = [
+    autoconf-archive
+    autoreconfHook
+    glib
+    makeWrapper
+    pkg-config
+    which
+  ];
   buildInputs = [ tpm2-tss glib dbus ];
   nativeCheckInputs = [ cmocka ];
 
@@ -41,6 +48,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "TPM2 resource manager, accessible via D-Bus";
+    mainProgram = "tpm2-abrmd";
     homepage = "https://github.com/tpm2-software/tpm2-tools";
     license = licenses.bsd3;
     platforms = platforms.linux;

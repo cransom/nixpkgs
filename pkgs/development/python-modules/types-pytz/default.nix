@@ -1,24 +1,26 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "types-pytz";
-  version = "2022.7.1.0";
-  format = "setuptools";
+  version = "2024.2.0.20240913";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-kY+cPnqVC6fn1vhLGKfKyryIhstxJfsZJ/8cdStLWd4=";
+    hash = "sha256-RDO130pvxYe77UFxbYalul2DK0N45Qb0DTS8nIHfLCQ=";
   };
+
+  build-system = [ setuptools ];
 
   # Modules doesn't have tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "pytz-stubs"
-  ];
+  pythonImportsCheck = [ "pytz-stubs" ];
 
   meta = with lib; {
     description = "Typing stubs for pytz";

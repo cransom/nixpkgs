@@ -1,23 +1,26 @@
-{ lib, python3Packages }:
+{ lib, python3Packages, fetchPypi }:
 
 python3Packages.buildPythonApplication rec {
   pname = "scdl";
-  version = "2.7.3";
-  format = "setuptools";
+  version = "2.12.1";
+  pyproject = true;
 
-  src = python3Packages.fetchPypi {
+  src = fetchPypi {
     inherit pname version;
-    sha256 = "60284b7b058040d4847f2e4b0ab906b10e959d51f976a0188641e8e10685474f";
+    hash = "sha256-8BMO5/XJdAkz/E1ZDXavJudNSOiZdYLcZVMk1S8g9nU=";
   };
 
-  propagatedBuildInputs = with python3Packages; [
-    docopt
+  build-system = [ python3Packages.setuptools ];
+
+  dependencies = with python3Packages; [
+    docopt-ng
     mutagen
     termcolor
     requests
-    clint
+    tqdm
     pathvalidate
     soundcloud-v2
+    filelock
   ];
 
   # No tests in repository
@@ -26,9 +29,10 @@ python3Packages.buildPythonApplication rec {
   pythonImportsCheck = [ "scdl" ];
 
   meta = with lib; {
-    description = "Download Music from Souncloud";
+    description = "Download Music from Soundcloud";
     homepage = "https://github.com/flyingrub/scdl";
     license = licenses.gpl2Only;
-    maintainers = with maintainers; [ marsam ];
+    maintainers = [ ];
+    mainProgram = "scdl";
   };
 }

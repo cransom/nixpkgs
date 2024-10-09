@@ -1,6 +1,7 @@
 { lib
 , stdenv
 , fetchFromGitHub
+, fetchpatch
 , installShellFiles
 , makeWrapper
 , libpcap
@@ -17,7 +18,16 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-mnGC/moQANloR5ODwRjzJzBa55OEZ9QU+9WpAHxQE/g=";
   };
 
-  postPatch = lib.optionalString stdenv.isDarwin ''
+  patches = [
+    # Patches the missing "--resume" functionality
+    (fetchpatch {
+      name = "resume.patch";
+      url = "https://github.com/robertdavidgraham/masscan/commit/90791550bbdfac8905917a109ed74024161f14b3.patch";
+      sha256 = "sha256-A7Fk3MBNxaad69MrUYg7fdMG77wba5iESDTIRigYslw=";
+    })
+  ];
+
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
     # Fix broken install command
     substituteInPlace Makefile --replace "-pm755" "-pDm755"
   '';
@@ -51,6 +61,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "Fast scan of the Internet";
+    mainProgram = "masscan";
     homepage = "https://github.com/robertdavidgraham/masscan";
     changelog = "https://github.com/robertdavidgraham/masscan/releases/tag/${version}";
     license = licenses.agpl3Only;

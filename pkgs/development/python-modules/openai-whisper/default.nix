@@ -1,50 +1,59 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, substituteAll
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  buildPythonPackage,
+  substituteAll,
 
-# runtime
-, ffmpeg
+  # build-system
+  setuptools,
 
-# propagates
-, numpy
-, torch
-, tqdm
-, more-itertools
-, transformers
-, ffmpeg-python
+  # runtime
+  ffmpeg-headless,
 
-# tests
-, pytestCheckHook
+  # propagates
+  more-itertools,
+  numba,
+  numpy,
+  triton,
+  tiktoken,
+  torch,
+  tqdm,
+
+  # tests
+  pytestCheckHook,
+  scipy,
 }:
 
 buildPythonPackage rec {
   pname = "whisper";
-  version = "20230124";
-  format = "setuptools";
+  version = "20240930";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "openai";
     repo = pname;
     rev = "refs/tags/v${version}";
-    hash = "sha256-+3fs/EXK5NGlISuMTk7r2ZZ4tNFKbNFNkVS2LmHBvwk=";
+    hash = "sha256-6wfHJM2pg+y1qUfVF1VRG86G3CtQ+UNIwMXR8pPi2k4=";
   };
 
   patches = [
     (substituteAll {
       src = ./ffmpeg-path.patch;
-      inherit ffmpeg;
+      ffmpeg = ffmpeg-headless;
     })
   ];
 
+  nativeBuildInputs = [ setuptools ];
+
   propagatedBuildInputs = [
+    more-itertools
+    numba
     numpy
+    tiktoken
     torch
     tqdm
-    more-itertools
-    transformers
-    ffmpeg-python
-  ];
+  ] ++ lib.optionals (lib.meta.availableOn stdenv.hostPlatform triton) [ triton ];
 
   preCheck = ''
     export HOME=$TMPDIR
@@ -52,18 +61,26 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [
     pytestCheckHook
+    scipy
   ];
 
   disabledTests = [
     # requires network access to download models
     "test_transcribe"
+    # requires NVIDIA drivers
+    "test_dtw_cuda_equivalence"
+    "test_median_filter_equivalence"
   ];
 
   meta = with lib; {
+    changelog = "https://github.com/openai/whisper/blob/v${version}/CHANGELOG.md";
     description = "General-purpose speech recognition model";
+    mainProgram = "whisper";
     homepage = "https://github.com/openai/whisper";
     license = licenses.mit;
-    maintainers = with maintainers; [ hexa ];
+    maintainers = with maintainers; [
+      hexa
+      MayNiklas
+    ];
   };
 }
-

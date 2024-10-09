@@ -6,11 +6,11 @@
 
 stdenv.mkDerivation rec {
   pname = "subread";
-  version = "2.0.3";
+  version = "2.0.6";
 
   src = fetchurl {
     url = "mirror://sourceforge/subread/subread-${version}/subread-${version}-source.tar.gz";
-    sha256 = "sha256-Vs7zovkU1DJxMGnVwoL0iDHDoezIlDKtVYDKoyKl9Ws=";
+    sha256 = "sha256-8P3aa5hjTSlGAolIwiAlPhCg8nx/pfJJE7ZbOsbLsEU=";
   };
 
   buildInputs = [
@@ -19,7 +19,7 @@ stdenv.mkDerivation rec {
 
   configurePhase = ''
     cd src
-    cp Makefile.${if stdenv.isLinux then "Linux" else "MacOS"} Makefile
+    cp Makefile.${if stdenv.hostPlatform.isLinux then "Linux" else "MacOS"} Makefile
   '';
 
   makeFlags = [ "CC_EXEC=cc" ];
@@ -30,7 +30,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
     description = "High-performance read alignment, quantification and mutation discovery";
     license = licenses.gpl3;
     maintainers = with maintainers; [ jbedo ];

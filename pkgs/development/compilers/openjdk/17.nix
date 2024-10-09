@@ -1,19 +1,22 @@
-{ stdenv, lib, fetchurl, fetchFromGitHub, bash, pkg-config, autoconf, cpio
+{ stdenv, lib, fetchurl, fetchpatch, fetchFromGitHub, bash, pkg-config, autoconf, cpio
 , file, which, unzip, zip, perl, cups, freetype, harfbuzz, alsa-lib, libjpeg, giflib
 , libpng, zlib, lcms2, libX11, libICE, libXrender, libXext, libXt, libXtst
 , libXi, libXinerama, libXcursor, libXrandr, fontconfig, openjdk17-bootstrap
 , setJavaClassPath
 , headless ? false
-, enableJavaFX ? openjfx.meta.available, openjfx
-, enableGnome2 ? true, gtk3, gnome_vfs, glib, GConf
+, enableJavaFX ? false, openjfx
+, enableGtk ? true, gtk3, glib
 }:
 
 let
   version = {
     feature = "17";
-    interim = ".0.5";
-    build = "8";
+    interim = ".0.11";
+    build = "9";
   };
+
+  # when building a headless jdk, also bootstrap it with a headless jdk
+  openjdk-bootstrap = openjdk17-bootstrap.override { gtkSupport = !headless; };
 
   openjdk = stdenv.mkDerivation {
     pname = "openjdk" + lib.optionalString headless "-headless";
@@ -23,16 +26,16 @@ let
       owner = "openjdk";
       repo = "jdk${version.feature}u";
       rev = "jdk-${version.feature}${version.interim}+${version.build}";
-      sha256 = "sha256-2k1Mm36ds6MZheZVsLvXkoqQG4zYeIRWzbP1aZ72Vqs=";
+      sha256 = "sha256-aO4iSc9MklW/4q9U86WEfiiWnlq6iZSbxzq2fbsqd0A=";
     };
 
     nativeBuildInputs = [ pkg-config autoconf unzip ];
     buildInputs = [
       cpio file which zip perl zlib cups freetype harfbuzz alsa-lib libjpeg giflib
       libpng zlib lcms2 libX11 libICE libXrender libXext libXtst libXt libXtst
-      libXi libXinerama libXcursor libXrandr fontconfig openjdk17-bootstrap
-    ] ++ lib.optionals (!headless && enableGnome2) [
-      gtk3 gnome_vfs GConf glib
+      libXi libXinerama libXcursor libXrandr fontconfig openjdk-bootstrap
+    ] ++ lib.optionals (!headless && enableGtk) [
+      gtk3 glib
     ];
 
     patches = [
@@ -58,7 +61,23 @@ let
         url = "https://git.alpinelinux.org/aports/plain/community/openjdk17/FixNullPtrCast.patch?id=41e78a067953e0b13d062d632bae6c4f8028d91c";
         sha256 = "sha256-LzmSew51+DyqqGyyMw2fbXeBluCiCYsS1nCjt9hX6zo=";
       })
-    ] ++ lib.optionals (!headless && enableGnome2) [
+
+      # Fix build for gnumake-4.4.1:
+      #   https://github.com/openjdk/jdk/pull/12992
+      (fetchpatch {
+        name = "gnumake-4.4.1";
+        url = "https://github.com/openjdk/jdk/commit/9341d135b855cc208d48e47d30cd90aafa354c36.patch";
+        hash = "sha256-Qcm3ZmGCOYLZcskNjj7DYR85R4v07vYvvavrVOYL8vg=";
+      })
+
+      # Backport fixes for musl 1.2.4 which are already applied in jdk21+
+      # Fetching patch from chimera because they already went through the effort of rebasing it onto jdk17
+      (fetchurl {
+        name = "lfs64.patch";
+        url = "https://raw.githubusercontent.com/chimera-linux/cports/4614075d19e9c9636f3f7e476687247f63330a35/contrib/openjdk17/patches/lfs64.patch";
+        hash = "sha256-t2mRbdEiumBAbIAC0zsJNwCn59WYWHsnRtuOSL6bWB4=";
+      })
+    ] ++ lib.optionals (!headless && enableGtk) [
       ./swing-use-gtk-jdk13.patch
     ];
 
@@ -67,8 +86,13 @@ let
       patchShebangs --build configure
     '';
 
+    # JDK's build system attempts to specifically detect
+    # and special-case WSL, and we don't want it to do that,
+    # so pass the correct platform names explicitly
+    configurePlatforms = ["build" "host"];
+
     configureFlags = [
-      "--with-boot-jdk=${openjdk17-bootstrap.home}"
+      "--with-boot-jdk=${openjdk-bootstrap.home}"
       "--with-version-build=${version.build}"
       "--with-version-opt=nixos"
       "--with-version-pre="
@@ -82,18 +106,24 @@ let
       "--with-zlib=system"
       "--with-lcms=system"
       "--with-stdc++lib=dynamic"
-    ] ++ lib.optional stdenv.isx86_64 "--with-jvm-features=zgc"
-      ++ lib.optional headless "--enable-headless-only"
-      ++ lib.optional (!headless && enableJavaFX) "--with-import-modules=${openjfx}";
+    ]
+    ++ lib.optionals stdenv.cc.isClang [
+      "--with-toolchain-type=clang"
+      # Explicitly tell Clang to compile C++ files as C++, see
+      # https://github.com/NixOS/nixpkgs/issues/150655#issuecomment-1935304859
+      "--with-extra-cxxflags=-xc++"
+    ]
+    ++ lib.optional headless "--enable-headless-only"
+    ++ lib.optional (!headless && enableJavaFX) "--with-import-modules=${openjfx}";
 
     separateDebugInfo = true;
 
-    NIX_CFLAGS_COMPILE = "-Wno-error";
+    env.NIX_CFLAGS_COMPILE = "-Wno-error";
 
     NIX_LDFLAGS = toString (lib.optionals (!headless) [
       "-lfontconfig" "-lcups" "-lXinerama" "-lXrandr" "-lmagic"
-    ] ++ lib.optionals (!headless && enableGnome2) [
-      "-lgtk-3" "-lgio-2.0" "-lgnomevfs-2" "-lgconf-2"
+    ] ++ lib.optionals (!headless && enableGtk) [
+      "-lgtk-3" "-lgio-2.0"
     ]);
 
     # -j flag is explicitly rejected by the build system:
@@ -165,8 +195,9 @@ let
       done
     '';
 
-    disallowedReferences = [ openjdk17-bootstrap ];
+    disallowedReferences = [ openjdk-bootstrap ];
 
+    pos = builtins.unsafeGetAttrPos "feature" version;
     meta = import ./meta.nix lib version.feature;
 
     passthru = {

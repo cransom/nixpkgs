@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchFromGitHub, cmake }:
+{ lib, stdenv, fetchFromGitHub, cmake, gitUpdater }:
 
 stdenv.mkDerivation rec {
   pname = "platform-folders";
@@ -17,11 +17,13 @@ stdenv.mkDerivation rec {
     "-DBUILD_SHARED_LIBS=${if stdenv.hostPlatform.isStatic then "OFF" else "ON"}"
   ];
 
+  passthru.updateScript = gitUpdater { };
+
   meta = with lib; {
-    description = "A C++ library to look for standard platform directories so that you do not need to write platform-specific code";
+    description = "C++ library to look for standard platform directories so that you do not need to write platform-specific code";
     homepage = "https://github.com/sago007/PlatformFolders";
     license = licenses.mit;
-    maintainers = with maintainers; [ lilyinstarlight ];
+    maintainers = [ ];
     platforms = platforms.all;
   };
 }

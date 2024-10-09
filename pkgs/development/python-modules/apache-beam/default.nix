@@ -1,60 +1,62 @@
-{ buildPythonPackage
-, cloudpickle
-, crcmod
-, cython
-, dill
-, fastavro
-, fasteners
-, fetchFromGitHub
-, fetchpatch
-, freezegun
-, grpcio
-, grpcio-tools
-, hdfs
-, httplib2
-, hypothesis
-, lib
-, mock
-, mypy-protobuf
-, numpy
-, objsize
-, orjson
-, pandas
-, parameterized
-, proto-plus
-, protobuf
-, psycopg2
-, pyarrow
-, pydot
-, pyhamcrest
-, pymongo
-, pytest-xdist
-, pytestCheckHook
-, python
-, python-dateutil
-, pythonRelaxDepsHook
-, pytz
-, pyyaml
-, regex
-, requests
-, requests-mock
-, scikit-learn
-, sqlalchemy
-, tenacity
-, testcontainers
-, typing-extensions
-, zstandard
+{
+  buildPythonPackage,
+  cloudpickle,
+  crcmod,
+  cython,
+  dill,
+  fastavro,
+  fasteners,
+  fetchFromGitHub,
+  fetchpatch,
+  freezegun,
+  grpcio,
+  grpcio-tools,
+  hdfs,
+  httplib2,
+  hypothesis,
+  lib,
+  mock,
+  mypy-protobuf,
+  numpy,
+  objsize,
+  orjson,
+  pandas,
+  parameterized,
+  proto-plus,
+  protobuf,
+  psycopg2,
+  pyarrow,
+  pydot,
+  pyhamcrest,
+  pymongo,
+  pytest-xdist,
+  pytestCheckHook,
+  python,
+  python-dateutil,
+  pytz,
+  pyyaml,
+  regex,
+  requests,
+  requests-mock,
+  scikit-learn,
+  setuptools,
+  sqlalchemy,
+  tenacity,
+  testcontainers,
+  typing-extensions,
+  zstandard,
 }:
 
 buildPythonPackage rec {
   pname = "apache-beam";
-  version = "2.44.0";
+  version = "2.56.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "apache";
     repo = "beam";
     rev = "refs/tags/v${version}";
-    hash = "sha256-5fnZxv2ZkFlv8vGDIt/6EL41v9P1iKa1tEd1nezq+PU=";
+    hash = "sha256-SD+93duc3vTIlS/LPOuzXeiUSpwX+GNrqW3GTJMVgKY=";
   };
 
   patches = [
@@ -76,20 +78,24 @@ buildPythonPackage rec {
     # See https://github.com/NixOS/nixpkgs/issues/193613
     "protobuf"
 
-    # As of apache-beam v2.44.0, the requirement is httplib2>=0.8,<0.21.0, but
+    # As of apache-beam v2.45.0, the requirement is httplib2>=0.8,<0.21.0, but
     # the current (2023-02-08) nixpkgs's httplib2 version is 0.21.0. This can be
     # removed once beam is upgraded since the current requirement on master is
     # for httplib2>=0.8,<0.22.0.
     "httplib2"
+
+    # As of apache-beam v2.45.0, the requirement is pyarrow<10.0.0,>=0.15.1, but
+    # the current (2023-02-22) nixpkgs's pyarrow version is 11.0.0.
+    "pyarrow"
   ];
 
-  sourceRoot = "source/sdks/python";
+  sourceRoot = "${src.name}/sdks/python";
 
   nativeBuildInputs = [
     cython
     grpcio-tools
     mypy-protobuf
-    pythonRelaxDepsHook
+    setuptools
   ];
 
   propagatedBuildInputs = [
@@ -119,9 +125,7 @@ buildPythonPackage rec {
 
   enableParallelBuilding = true;
 
-  pythonImportsCheck = [
-    "apache_beam"
-  ];
+  pythonImportsCheck = [ "apache_beam" ];
 
   checkInputs = [
     freezegun
@@ -143,7 +147,7 @@ buildPythonPackage rec {
 
   # Make sure we're running the tests for the actually installed
   # package, so that cython's .so files are available.
-  preCheck = "cd $out/lib/${python.libPrefix}/site-packages";
+  preCheck = "cd $out/${python.sitePackages}";
 
   disabledTestPaths = [
     # Fails with
@@ -196,6 +200,8 @@ buildPythonPackage rec {
     "test_get_output_batch_type"
     "test_pformat_namedtuple_with_unnamed_fields"
     "test_row_coder_fail_early_bad_schema"
+    # See https://github.com/apache/beam/issues/26004.
+    "test_batch_encode_decode"
   ];
 
   meta = with lib; {
@@ -203,5 +209,7 @@ buildPythonPackage rec {
     homepage = "https://beam.apache.org/";
     license = licenses.asl20;
     maintainers = with maintainers; [ ndl ];
+    # https://github.com/apache/beam/issues/27221
+    broken = lib.versionAtLeast pandas.version "2";
   };
 }

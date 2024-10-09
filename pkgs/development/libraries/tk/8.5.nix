@@ -11,10 +11,10 @@ callPackage ./generic.nix (args // {
 
   src = fetchurl {
     url = "mirror://sourceforge/tcl/tk${tcl.version}-src.tar.gz";
-    sha256 = "0an3wqkjzlyyq6l9l3nawz76axsrsppbyylx0zk9lkv7llrala03";
+    sha256 = "1yhgcalldrjlc5q614rlzg1crgd3b52dhrk1pncdaxvl2vgg2yj0";
   };
 
-  patches = lib.optionals stdenv.isDarwin [
+  patches = lib.optionals stdenv.hostPlatform.isDarwin [
     # Define MODULE_SCOPE before including tkPort.h
     # https://core.tcl-lang.org/tk/info/dba9f5ce3b
     (fetchpatch {

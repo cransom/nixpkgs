@@ -7,12 +7,11 @@
 , flac
 , libogg
 , libvorbis
-, grpcSupport ? false, grpc, which
 , iceSupport ? true, zeroc-ice
 , jackSupport ? false, libjack2
 , pipewireSupport ? true, pipewire
 , pulseSupport ? true, libpulseaudio
-, speechdSupport ? false, speechd
+, speechdSupport ? false, speechd-minimal
 }:
 
 let
@@ -28,6 +27,7 @@ let
 
     cmakeFlags = [
       "-D g15=OFF"
+      "-D CMAKE_CXX_STANDARD=17" # protobuf >22 requires C++ 17
     ] ++ (overrides.configureFlags or [ ]);
 
     preConfigure = ''
@@ -38,9 +38,10 @@ let
 
     meta = with lib; {
       description = "Low-latency, high quality voice chat software";
+      mainProgram = "mumble-server";
       homepage = "https://mumble.info";
       license = licenses.bsd3;
-      maintainers = with maintainers; [ infinisil felixsinger ];
+      maintainers = with maintainers; [ felixsinger lilacious ];
       platforms = platforms.linux;
     };
   });
@@ -52,7 +53,7 @@ let
     buildInputs = [ flac libogg libopus libsndfile libvorbis qt5.qtsvg rnnoise speex ]
       ++ lib.optional (!jackSupport) alsa-lib
       ++ lib.optional jackSupport libjack2
-      ++ lib.optional speechdSupport speechd
+      ++ lib.optional speechdSupport speechd-minimal
       ++ lib.optional pulseSupport libpulseaudio
       ++ lib.optional pipewireSupport pipewire;
 
@@ -61,17 +62,17 @@ let
       "-D bundled-celt=ON"
       "-D bundled-opus=OFF"
       "-D bundled-speex=OFF"
-      "-D bundled-rnnoise=OFF"
       "-D bundle-qt-translations=OFF"
       "-D update=OFF"
       "-D overlay-xcompile=OFF"
       "-D oss=OFF"
+      "-D warnings-as-errors=OFF" # conversion error workaround
     ] ++ lib.optional (!speechdSupport) "-D speechd=OFF"
       ++ lib.optional (!pulseSupport) "-D pulseaudio=OFF"
       ++ lib.optional (!pipewireSupport) "-D pipewire=OFF"
       ++ lib.optional jackSupport "-D alsa=OFF -D jackaudio=ON";
 
-    NIX_CFLAGS_COMPILE = lib.optional speechdSupport "-I${speechd}/include/speech-dispatcher";
+    env.NIX_CFLAGS_COMPILE = lib.optionalString speechdSupport "-I${speechd-minimal}/include/speech-dispatcher";
 
     postFixup = ''
       wrapProgram $out/bin/mumble \
@@ -89,34 +90,29 @@ let
         "-D Ice_HOME=${lib.getDev zeroc-ice};${lib.getLib zeroc-ice}"
         "-D CMAKE_PREFIX_PATH=${lib.getDev zeroc-ice};${lib.getLib zeroc-ice}"
         "-D Ice_SLICE_DIR=${lib.getDev zeroc-ice}/share/ice/slice"
-      ]
-      ++ lib.optional grpcSupport "-D grpc=ON";
+      ];
 
     buildInputs = [ libcap ]
-      ++ lib.optional iceSupport zeroc-ice
-      ++ lib.optionals grpcSupport [ grpc which ];
+      ++ lib.optional iceSupport zeroc-ice;
   } source;
 
   source = rec {
-    version = "1.4.287";
+    version = "1.5.634";
 
     # Needs submodules
     src = fetchFromGitHub {
       owner = "mumble-voip";
       repo = "mumble";
-      rev = "5d808e287e99b402b724e411a7a0848e00956a24";
-      sha256 = "sha256-SYsGCuj3HeyAQRUecGLaRdJR9Rm7lbaM54spY/zx0jU=";
+      rev = "v${version}";
+      hash = "sha256-d9XmXHq264rTT80zphYcKLxS+AyUhjb19D3DuBJvMI4=";
       fetchSubmodules = true;
     };
 
     patches = [
-      # fixes 'static assertion failed: static_assert(sizeof(CCameraAngles) == 0x408, "");'
-      # when compiling pkgsi686Linux.mumble, which is a dependency of x64 mumble_overlay
-      # https://github.com/mumble-voip/mumble/pull/5850
-      # Remove with next version update
       (fetchpatch {
-        url = "https://github.com/mumble-voip/mumble/commit/13c051b36b387356815cff5d685bc628b74ba136.patch";
-        hash = "sha256-Rq8fb6NFd4DCNWm6OOMYIP7tBllufmQcB5CSxPU4qqg=";
+        name = "GCC14.patch";
+        url = "https://github.com/mumble-voip/mumble/commit/56945a9dfb62d29dccfe561572ebf64500deaed1.patch";
+        hash = "sha256-Frct9XJ/ZuHPglx+GB9h3vVycR8YY039dStIbfkPPDk=";
       })
     ];
   };

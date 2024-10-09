@@ -27,16 +27,16 @@
 
 stdenv.mkDerivation rec {
   pname = "gnome-desktop";
-  version = "43.1";
+  version = "44.0";
 
   outputs = [ "out" "dev" "devdoc" ];
 
   src = fetchurl {
     url = "mirror://gnome/sources/gnome-desktop/${lib.versions.major version}/${pname}-${version}.tar.xz";
-    sha256 = "sha256-Mq+NvD2afVg1aafw1/GPlYGNXbnuj5LZEjpkexXqyMc=";
+    sha256 = "sha256-QsdzdF2EuhS8HPHExvRgYUiAOlzTN5QcY5ZHlfPFnUI=";
   };
 
-  patches = lib.optionals stdenv.isLinux [
+  patches = lib.optionals stdenv.hostPlatform.isLinux [
     (substituteAll {
       src = ./bubblewrap-paths.patch;
       bubblewrap_bin = "${bubblewrap}/bin/bwrap";
@@ -64,7 +64,7 @@ stdenv.mkDerivation rec {
     gtk3
     gtk4
     glib
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     bubblewrap
     wayland
     libseccomp
@@ -78,12 +78,12 @@ stdenv.mkDerivation rec {
   mesonFlags = [
     "-Dgtk_doc=true"
     "-Ddesktop_docs=false"
-  ] ++ lib.optionals (!stdenv.isLinux) [
+  ] ++ lib.optionals (!stdenv.hostPlatform.isLinux) [
     "-Dsystemd=disabled"
     "-Dudev=disabled"
   ];
 
-  separateDebugInfo = stdenv.isLinux;
+  separateDebugInfo = stdenv.hostPlatform.isLinux;
 
   passthru = {
     updateScript = gnome.updateScript {

@@ -10,34 +10,41 @@
 , glib
 , makeWrapper
 , libcap
-, libunwind
-, darwin
 , elfutils # for libdw
 , bash-completion
 , lib
+, Cocoa
 , CoreServices
-, gobject-introspection
+, rustc
 , testers
+, gobject-introspection
+, buildPackages
+, withIntrospection ? lib.meta.availableOn stdenv.hostPlatform gobject-introspection && stdenv.hostPlatform.emulatorAvailable buildPackages
+, libunwind
+, withLibunwind ?
+  lib.meta.availableOn stdenv.hostPlatform libunwind &&
+    lib.elem "libunwind" libunwind.meta.pkgConfigModules or []
+# Checks meson.is_cross_build(), so even canExecute isn't enough.
+, enableDocumentation ? stdenv.hostPlatform == stdenv.buildPlatform, hotdoc
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gstreamer";
-  version = "1.20.3";
+  version = "1.24.3";
 
   outputs = [
     "bin"
     "out"
     "dev"
-    # "devdoc" # disabled until `hotdoc` is packaged in nixpkgs, see:
-    # - https://github.com/NixOS/nixpkgs/pull/98767
-    # - https://github.com/NixOS/nixpkgs/issues/98769#issuecomment-702296551
   ];
+
+  separateDebugInfo = true;
 
   src = let
     inherit (finalAttrs) pname version;
   in fetchurl {
     url = "https://gstreamer.freedesktop.org/src/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "sha256-YH2vZLu9X7GK+dF+IcDSLE1wL//oOyPLItGxryyiOio=";
+    hash = "sha256-EiXvSjKfrhytxexyfaskmtVn6AcoeUk1Yc65HtNKpBQ=";
   };
 
   depsBuildBuild = [
@@ -56,22 +63,25 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper
     glib
     bash-completion
-    gobject-introspection
-
-    # documentation
-    # TODO add hotdoc here
-  ] ++ lib.optionals stdenv.isLinux [
+    rustc
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     libcap # for setcap binary
+  ] ++ lib.optionals withIntrospection [
+    gobject-introspection
+  ] ++ lib.optionals enableDocumentation [
+    hotdoc
   ];
 
   buildInputs = [
     bash-completion
-    gobject-introspection
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     libcap
-    libunwind
+  ] ++ lib.optionals (lib.meta.availableOn stdenv.hostPlatform elfutils) [
     elfutils
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals withLibunwind [
+    libunwind
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    Cocoa
     CoreServices
   ];
 
@@ -82,11 +92,10 @@ stdenv.mkDerivation (finalAttrs: {
   mesonFlags = [
     "-Ddbghelp=disabled" # not needed as we already provide libunwind and libdw, and dbghelp is a fallback to those
     "-Dexamples=disabled" # requires many dependencies and probably not useful for our users
-    "-Ddoc=disabled" # `hotdoc` not packaged in nixpkgs as of writing
-  ] ++ lib.optionals stdenv.isDarwin [
-    # darwin.libunwind doesn't have pkg-config definitions so meson doesn't detect it.
-    "-Dlibunwind=disabled"
-    "-Dlibdw=disabled"
+    (lib.mesonEnable "introspection" withIntrospection)
+    (lib.mesonEnable "doc" enableDocumentation)
+    (lib.mesonEnable "libunwind" withLibunwind)
+    (lib.mesonEnable "libdw" withLibunwind)
   ];
 
   postPatch = ''
@@ -95,7 +104,8 @@ stdenv.mkDerivation (finalAttrs: {
       gst/parse/gen_grammar.py.in \
       gst/parse/gen_lex.py.in \
       libs/gst/helpers/ptp_helper_post_install.sh \
-      scripts/extract-release-date-from-doap-file.py
+      scripts/extract-release-date-from-doap-file.py \
+      docs/gst-plugins-doc-cache-generator.py
   '';
 
   postInstall = ''

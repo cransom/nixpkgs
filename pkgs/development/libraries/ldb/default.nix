@@ -12,16 +12,18 @@
 , docbook_xml_dtd_42
 , cmocka
 , wafHook
+, buildPackages
 , libxcrypt
+, testers
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "ldb";
-  version = "2.6.1";
+  version = "2.9.1";
 
   src = fetchurl {
-    url = "mirror://samba/ldb/${pname}-${version}.tar.gz";
-    sha256 = "sha256-RnQD9334Z4LDlluxdUQLqi7XUan+uVYBlL2MBr8XNsk=";
+    url = "mirror://samba/ldb/ldb-${finalAttrs.version}.tar.gz";
+    hash = "sha256-yV5Nwy3qiGS3mJnuNAyf3yi0hvRku8OLqZFRoItJP5s=";
   };
 
   outputs = [ "out" "dev" ];
@@ -61,15 +63,28 @@ stdenv.mkDerivation rec {
     "--bundled-libraries=NONE"
     "--builtin-libraries=replace"
     "--without-ldb-lmdb"
+  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+    "--cross-compile"
+    "--cross-execute=${stdenv.hostPlatform.emulator buildPackages}"
   ];
+
+  # python-config from build Python gives incorrect values when cross-compiling.
+  # If python-config is not found, the build falls back to using the sysconfig
+  # module, which works correctly in all cases.
+  PYTHON_CONFIG = "/invalid";
 
   stripDebugList = [ "bin" "lib" "modules" ];
 
+  passthru.tests.pkg-config = testers.hasPkgConfigModules {
+    package = finalAttrs.finalPackage;
+  };
+
   meta = with lib; {
-    broken = stdenv.isDarwin;
-    description = "A LDAP-like embedded database";
+    broken = stdenv.hostPlatform.isDarwin;
+    description = "LDAP-like embedded database";
     homepage = "https://ldb.samba.org/";
     license = licenses.lgpl3Plus;
+    pkgConfigModules = [ "ldb" ];
     platforms = platforms.all;
   };
-}
+})

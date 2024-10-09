@@ -1,8 +1,6 @@
 { buildDunePackage
 , lib
 , fetchurl
-, fetchpatch
-, mirage-stack
 , mirage-time
 , h2
 , tls-mirage
@@ -21,22 +19,21 @@
 , uri
 , alcotest-lwt
 , cstruct
+, httpaf
 }:
 
 buildDunePackage rec {
   pname = "paf";
-  version = "0.3.0";
+  version = "0.6.0";
 
   src = fetchurl {
     url = "https://github.com/dinosaure/paf-le-chien/releases/download/${version}/paf-${version}.tbz";
-    sha256 = "sha256-+RkrmWJJREHg8BBdNe92vYhd2/Frvs7l5qOr9jBwymU=";
+    hash = "sha256-uvNezux0V4mwbxU07zCfCYXOgCYKPxshOKiiAjLef9k=";
   };
 
   minimalOCamlVersion = "4.08";
-  duneVersion = "3";
 
   propagatedBuildInputs = [
-    mirage-stack
     mirage-time
     h2
     tls-mirage
@@ -47,6 +44,7 @@ buildDunePackage rec {
     tls
     cstruct
     tcpip
+    httpaf
   ];
 
   doCheck = true;

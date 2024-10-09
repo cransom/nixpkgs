@@ -1,20 +1,22 @@
-{ fetchzip, lib, rustPlatform, installShellFiles, makeWrapper }:
+{ fetchzip, lib, rustPlatform, git, installShellFiles }:
 
 rustPlatform.buildRustPackage rec {
   pname = "helix";
-  version = "22.12";
+  version = "24.07";
 
   # This release tarball includes source code for the tree-sitter grammars,
   # which is not ordinarily part of the repository.
   src = fetchzip {
     url = "https://github.com/helix-editor/helix/releases/download/${version}/helix-${version}-source.tar.xz";
-    sha256 = "sha256-En6SOyAPNPPzDGdm2XTjbGG0NQFGBVzjjoyCbdnHFao=";
+    hash = "sha256-R8foMx7YJ01ZS75275xPQ52Ns2EB3OPop10F4nicmoA=";
     stripRoot = false;
   };
 
-  cargoSha256 = "sha256-oSS0LkLg2JSRLYoF0+FVQzFUJtFuVKtU2MWYenmFC0s=";
+  cargoHash = "sha256-Y8zqdS8vl2koXmgFY0hZWWP1ZAO8JgwkoPTYPVpkWsA=";
 
-  nativeBuildInputs = [ installShellFiles makeWrapper ];
+  nativeBuildInputs = [ git installShellFiles ];
+
+  env.HELIX_DEFAULT_RUNTIME = "${placeholder "out"}/lib/runtime";
 
   postInstall = ''
     # not needed at runtime
@@ -23,16 +25,16 @@ rustPlatform.buildRustPackage rec {
     mkdir -p $out/lib
     cp -r runtime $out/lib
     installShellCompletion contrib/completion/hx.{bash,fish,zsh}
-  '';
-  postFixup = ''
-    wrapProgram $out/bin/hx --set HELIX_RUNTIME $out/lib/runtime
+    mkdir -p $out/share/{applications,icons/hicolor/256x256/apps}
+    cp contrib/Helix.desktop $out/share/applications
+    cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
   '';
 
   meta = with lib; {
-    description = "A post-modern modal text editor";
+    description = "Post-modern modal text editor";
     homepage = "https://helix-editor.com";
     license = licenses.mpl20;
     mainProgram = "hx";
-    maintainers = with maintainers; [ danth yusdacra ];
+    maintainers = with maintainers; [ danth yusdacra zowoq ];
   };
 }

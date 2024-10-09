@@ -1,17 +1,17 @@
-{ lib, buildGoModule, fetchFromGitHub, installShellFiles, testers, rhoas }:
+{ lib, buildGoModule, fetchFromGitHub, stdenv, installShellFiles, testers, rhoas }:
 
 buildGoModule rec {
   pname = "rhoas";
-  version = "0.51.9";
+  version = "0.53.0";
 
   src = fetchFromGitHub {
     owner = "redhat-developer";
     repo = "app-services-cli";
     rev = "v${version}";
-    sha256 = "sha256-KDEKuaLFVptQs+h0NBlPt0z9kBb3FkroG5mfEgFFCxM=";
+    sha256 = "sha256-9fydRgp2u1LWf0lEDMi1OxxFURd14oKCBDKACqrgWII=";
   };
 
-  vendorSha256 = null;
+  vendorHash = null;
 
   ldflags = [
     "-s"
@@ -24,11 +24,11 @@ buildGoModule rec {
   # Networking tests fail.
   doCheck = false;
 
-  postInstall = ''
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd rhoas \
-      --bash <($out/bin/rhoas completion bash) \
-      --fish <($out/bin/rhoas completion fish) \
-      --zsh <($out/bin/rhoas completion zsh)
+      --bash <(HOME=$TMP $out/bin/rhoas completion bash) \
+      --fish <(HOME=$TMP $out/bin/rhoas completion fish) \
+      --zsh <(HOME=$TMP $out/bin/rhoas completion zsh)
   '';
 
   passthru.tests.version = testers.testVersion {
@@ -42,5 +42,6 @@ buildGoModule rec {
     homepage = "https://github.com/redhat-developer/app-services-cli";
     changelog = "https://github.com/redhat-developer/app-services-cli/releases/v${version}";
     maintainers = with maintainers; [stehessel];
+    mainProgram = "rhoas";
   };
 }

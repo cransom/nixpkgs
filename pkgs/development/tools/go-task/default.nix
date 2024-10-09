@@ -1,17 +1,34 @@
-{ lib, buildGoModule, fetchFromGitHub, installShellFiles }:
+{ lib
+, buildGoModule
+, fetchFromGitHub
+, fetchpatch
+, installShellFiles
+, testers
+, go-task
+}:
 
 buildGoModule rec {
   pname = "go-task";
-  version = "3.20.0";
+  version = "3.39.2";
 
   src = fetchFromGitHub {
-    owner = pname;
+    owner = "go-task";
     repo = "task";
-    rev = "v${version}";
-    sha256 = "sha256-pKvotNUpZl51r+9+YFEQGXVsUBfxsmTZLnRIdrl7UGQ=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-B5o3oAey7zJg5JBf4GO69cLmVbnkKedkjWP108XRGR8=";
   };
 
-  vendorHash = "sha256-AZtkWJ/U1dH9J+wowlcg25qBVyRRo6LCzc6IBYKBkVA=";
+  vendorHash = "sha256-P9J69WJ2C2xgdU9xydiaY8iSKB7ZfexLNYi7dyHDTIk=";
+
+  patches = [
+    # fix version resolution when passed in though ldflags
+    # remove on next release
+    (fetchpatch {
+      name = "fix-ldflags-version.patch";
+      url = "https://github.com/go-task/task/commit/9ee4f21d62382714ac829df6f9bbf1637406eb5b.patch?full_index=1";
+      hash = "sha256-wu5//aZ/vzuObb03AjUUlVFjPr175mn1vVAZgqSGIZ0=";
+    })
+  ];
 
   doCheck = false;
 
@@ -20,18 +37,36 @@ buildGoModule rec {
   subPackages = [ "cmd/task" ];
 
   ldflags = [
-    "-s" "-w" "-X main.version=${version}"
+    "-s"
+    "-w"
+    "-X=github.com/go-task/task/v3/internal/version.version=${version}"
   ];
+
+  CGO_ENABLED = 0;
 
   postInstall = ''
     ln -s $out/bin/task $out/bin/go-task
 
     installShellCompletion completion/{bash,fish,zsh}/*
+
+    substituteInPlace $out/share/bash-completion/completions/task.bash \
+      --replace-fail 'complete -F _task task' 'complete -F _task task go-task'
+    substituteInPlace $out/share/fish/vendor_completions.d/task.fish \
+      --replace-fail 'complete -c $GO_TASK_PROGNAME' 'complete -c $GO_TASK_PROGNAME -c go-task'
+    substituteInPlace $out/share/zsh/site-functions/_task \
+      --replace-fail '#compdef task' '#compdef task go-task'
   '';
+
+  passthru.tests = {
+    version = testers.testVersion {
+      package = go-task;
+    };
+  };
 
   meta = with lib; {
     homepage = "https://taskfile.dev/";
-    description = "A task runner / simpler Make alternative written in Go";
+    description = "Task runner / simpler Make alternative written in Go";
+    changelog = "https://github.com/go-task/task/blob/v${version}/CHANGELOG.md";
     license = licenses.mit;
     maintainers = with maintainers; [ parasrah ];
   };

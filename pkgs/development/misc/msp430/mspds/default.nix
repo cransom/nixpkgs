@@ -6,10 +6,10 @@
 , libusb1 ? null
 }:
 
-assert stdenv.isLinux -> libusb1 != null;
+assert stdenv.hostPlatform.isLinux -> libusb1 != null;
 
 let
-  hidapiDriver = lib.optionalString stdenv.isLinux "-libusb";
+  hidapiDriver = lib.optionalString stdenv.hostPlatform.isLinux "-libusb";
 
 in stdenv.mkDerivation {
   pname = "msp-debug-stack";
@@ -25,14 +25,14 @@ in stdenv.mkDerivation {
   libName = "libmsp430${stdenv.hostPlatform.extensions.sharedLibrary}";
   makeFlags = [ "OUTPUT=$(libName)" "HIDOBJ=" ];
   NIX_LDFLAGS = [ "-lpugixml" "-lhidapi${hidapiDriver}" ];
-  NIX_CFLAGS_COMPILE = [ "-I${hidapi}/include/hidapi" ];
+  env.NIX_CFLAGS_COMPILE = toString [ "-I${hidapi}/include/hidapi" ];
 
   patches = [ ./bsl430.patch ];
 
   preBuild = ''
     rm ThirdParty/src/pugixml.cpp
     rm ThirdParty/include/pugi{config,xml}.hpp
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     makeFlagsArray+=(OUTNAME="-install_name ")
   '';
 
@@ -43,7 +43,7 @@ in stdenv.mkDerivation {
 
   nativeBuildInputs = [ unzip ];
   buildInputs = [ boost hidapi pugixml ]
-    ++ lib.optional stdenv.isLinux libusb1;
+    ++ lib.optional stdenv.hostPlatform.isLinux libusb1;
 
   meta = with lib; {
     description = "TI MSP430 FET debug driver";

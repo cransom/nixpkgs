@@ -1,31 +1,28 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, setuptools
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "toposort";
-  version = "1.9";
+  version = "1.10";
   format = "pyproject";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-9Bo0SQ1Ek0tTOnva/5ee6KRyA/0tinRtuD8tWrEkWLk=";
+    hash = "sha256-v7tHnFPQppbqdAJgH05pPJewNng3yImLxkca38o3pr0=";
   };
 
-  nativeBuildInputs = [
-    setuptools
-  ];
+  nativeBuildInputs = [ setuptools ];
 
-  pythonImportsCheck = [
-    "toposort"
-  ];
+  pythonImportsCheck = [ "toposort" ];
 
   meta = with lib; {
-    description = "A topological sort algorithm";
+    description = "Topological sort algorithm";
     homepage = "https://pypi.python.org/pypi/toposort/";
-    maintainers = with maintainers; [ ];
+    maintainers = [ ];
     platforms = platforms.unix;
     license = licenses.asl20;
   };

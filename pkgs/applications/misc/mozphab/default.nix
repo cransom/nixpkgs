@@ -10,22 +10,28 @@
 
 python3.pkgs.buildPythonApplication rec {
   pname = "mozphab";
-  version = "1.1.0";
-  format = "setuptools";
+  version = "1.5.1";
+  format = "pyproject";
 
   src = fetchFromGitHub {
     owner = "mozilla-conduit";
     repo = "review";
     rev = "refs/tags/${version}";
-    hash = "sha256-vLHikGjTYOeXd6jDRsoCkq3i0eh6Ttd4KdvlixjzdZ4=";
+    hash = "sha256-HxwQ+mGtjnruppPAD01QUg3aca+k5vpj814BWM+3VfQ=";
   };
 
   postPatch = ''
-    substituteInPlace setup.py \
+    substituteInPlace pyproject.toml \
       --replace "glean-sdk>=50.0.1,==50.*" "glean-sdk"
   '';
 
+  nativeBuildInputs = with python3.pkgs; [
+    setuptools
+    setuptools-scm
+  ];
+
   propagatedBuildInputs = with python3.pkgs; [
+    colorama
     distro
     glean-sdk
     packaging
@@ -51,6 +57,14 @@ python3.pkgs.buildPythonApplication rec {
     export HOME=$(mktemp -d)
   '';
 
+  disabledTests = [
+    # AttributeError: 'called_once' is not a valid assertion.
+    "test_commit"
+    # AttributeError: 'not_called' is not a valid assertion.
+    "test_finalize_no_evolve"
+    "test_patch"
+  ];
+
   disabledTestPaths = [
     # codestyle doesn't matter to us
     "tests/test_style.py"
@@ -65,6 +79,7 @@ python3.pkgs.buildPythonApplication rec {
 
   meta = with lib; {
     description = "Phabricator CLI from Mozilla to support submission of a series of commits";
+    mainProgram = "moz-phab";
     longDescription = ''
       moz-phab is a custom command-line tool, which communicates to
       Phabricator’s API, providing several conveniences, including support for
@@ -72,7 +87,7 @@ python3.pkgs.buildPythonApplication rec {
     '';
     homepage = "https://moz-conduit.readthedocs.io/en/latest/phabricator-user.html";
     license = licenses.mpl20;
-    maintainers = with maintainers; [];
+    maintainers = [ ];
     platforms = platforms.unix;
   };
 }

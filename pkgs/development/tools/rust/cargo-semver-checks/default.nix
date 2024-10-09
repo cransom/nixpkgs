@@ -1,45 +1,55 @@
 { lib
 , rustPlatform
 , fetchFromGitHub
-, pkg-config
-, libgit2
-, openssl
+, cmake
+, zlib
 , stdenv
 , darwin
+, git
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "cargo-semver-checks";
-  version = "0.18.0";
+  version = "0.34.0";
 
   src = fetchFromGitHub {
     owner = "obi1kenobi";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-ugcmsm1j2a1wOnUe9u70yoRXALCmtXSnb80N4B4IUWE=";
+    hash = "sha256-U7ykTLEuREe2GTVswcAw3R3h4zbkWxuI2dt/2689xSA=";
   };
 
-  cargoSha256 = "sha256-PxnPCevjVvmFMlmYv6qwIBZk2MThz65hgUyVhm2tzlc=";
+  cargoHash = "sha256-NoxYHwY5XpRiqrOjQsaSWQCXFalNAS9SchaKwHbB2uU=";
 
-  nativeBuildInputs = [ pkg-config ];
+  nativeBuildInputs = [
+    cmake
+  ];
 
-  buildInputs = [ libgit2 openssl ] ++ lib.optionals stdenv.isDarwin [
-    darwin.apple_sdk.frameworks.Security
+  buildInputs = [
+    zlib
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    darwin.apple_sdk.frameworks.SystemConfiguration
   ];
 
   checkFlags = [
-    # requires nightly version of cargo-rustdoc
-    "--skip=query::tests"
-    "--skip=verify_binary_contains_lints"
-    "--skip=rustdoc_cmd::tests"
+    # requires internet access
+    "--skip=detects_target_dependencies"
   ];
 
-  # use system openssl
-  OPENSSL_NO_VENDOR = true;
+  preCheck = ''
+    patchShebangs scripts/regenerate_test_rustdocs.sh
+    substituteInPlace scripts/regenerate_test_rustdocs.sh \
+      --replace-fail \
+        'TOPLEVEL="$(git rev-parse --show-toplevel)"' \
+        "TOPLEVEL=$PWD"
+    scripts/regenerate_test_rustdocs.sh
+  '';
 
   meta = with lib; {
-    description = "A tool to scan your Rust crate for semver violations";
+    description = "Tool to scan your Rust crate for semver violations";
+    mainProgram = "cargo-semver-checks";
     homepage = "https://github.com/obi1kenobi/cargo-semver-checks";
+    changelog = "https://github.com/obi1kenobi/cargo-semver-checks/releases/tag/v${version}";
     license = with licenses; [ mit /* or */ asl20 ];
     maintainers = with maintainers; [ figsoda matthiasbeyer ];
   };

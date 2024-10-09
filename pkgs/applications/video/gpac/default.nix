@@ -1,29 +1,29 @@
-{ lib, stdenv, fetchFromGitHub, fetchpatch, pkg-config, zlib }:
+{ lib, stdenv, fetchFromGitHub, cctools, pkg-config, Carbon, zlib }:
 
 stdenv.mkDerivation rec {
-  version = "2.2.0";
   pname = "gpac";
+  version = "2.4.0";
 
   src = fetchFromGitHub {
     owner = "gpac";
     repo = "gpac";
     rev = "v${version}";
-    sha256 = "sha256-m2qXTXLGgAyU9y6GEk4Hp/7Al57IPRSqImJatIcwswQ=";
+    hash = "sha256-RADDqc5RxNV2EfRTzJP/yz66p0riyn81zvwU3r9xncM=";
   };
-
-  patches = [
-    (fetchpatch {
-      name = "CVE-2023-0358.patch";
-      url = "https://github.com/gpac/gpac/commit/9971fb125cf91cefd081a080c417b90bbe4a467b.patch";
-      sha256 = "sha256-0PDQXahbJCOo1JJAC0T0N1u2mqmwAkdm87wXMJnBicM=";
-    })
-  ];
 
   # this is the bare minimum configuration, as I'm only interested in MP4Box
   # For most other functionality, this should probably be extended
-  nativeBuildInputs = [ pkg-config ];
+  nativeBuildInputs = [
+    pkg-config
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    cctools
+  ];
 
-  buildInputs = [ zlib ];
+  buildInputs = [
+    zlib
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    Carbon
+  ];
 
   enableParallelBuilding = true;
 
@@ -44,6 +44,6 @@ stdenv.mkDerivation rec {
     homepage = "https://gpac.wp.imt.fr";
     license = licenses.lgpl21;
     maintainers = with maintainers; [ bluescreen303 mgdelacroix ];
-    platforms = platforms.linux;
+    platforms = platforms.unix;
   };
 }

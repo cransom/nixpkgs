@@ -2,17 +2,19 @@
 , fetchFromGitHub
 , fetchurl
 , buildDunePackage
-, ocaml
 , gen
 , ppxlib
 , uchar
+, ppx_expect
 }:
 
 let param =
-  if lib.versionAtLeast ppxlib.version "0.26.0" then {
-    version = "3.0";
-    sha256 = "sha256-+4ggynMznVfjviMBjXil8CXdMByq4kSmDz6P2PyEETA=";
-  } else {
+  if lib.versionAtLeast ppxlib.version "0.26.0" then
+    {
+      version = "3.2";
+      sha256 = "sha256-5Vf1LRhSotNpTPzHmRgCMRYtrpgaspLlyzv1XdGt+u8=";
+    }
+  else {
     version = "2.5";
     sha256 = "sha256:062a5dvrzvb81l3a9phljrhxfw9nlb61q341q0a6xn65hll3z2wy";
   }
@@ -34,12 +36,14 @@ let
     url = "${baseUrl}/ucd/PropList.txt";
     sha256 = "sha256-4FwKKBHRE9rkq9gyiEGZo+qNGH7huHLYJAp4ipZUC/0=";
   };
+  atLeast31 = lib.versionAtLeast param.version "3.1";
 in
 buildDunePackage rec {
   pname = "sedlex";
   inherit (param) version;
 
   minimalOCamlVersion = "4.08";
+  duneVersion = "3";
 
   src = fetchFromGitHub {
     owner = "ocaml-community";
@@ -49,7 +53,10 @@ buildDunePackage rec {
   };
 
   propagatedBuildInputs = [
-    gen uchar ppxlib
+    gen
+    ppxlib
+  ] ++ lib.optionals (!atLeast31) [
+    uchar
   ];
 
   preBuild = ''
@@ -59,6 +66,10 @@ buildDunePackage rec {
     ln -s ${PropList} src/generator/data/PropList.txt
   '';
 
+  checkInputs = lib.optionals atLeast31 [
+    ppx_expect
+  ];
+
   doCheck = true;
 
   dontStrip = true;
@@ -66,8 +77,8 @@ buildDunePackage rec {
   meta = {
     homepage = "https://github.com/ocaml-community/sedlex";
     changelog = "https://github.com/ocaml-community/sedlex/raw/v${version}/CHANGES";
-    description = "An OCaml lexer generator for Unicode";
+    description = "OCaml lexer generator for Unicode";
     license = lib.licenses.mit;
-    maintainers = [ lib.maintainers.marsam ];
+    maintainers = [ ];
   };
 }

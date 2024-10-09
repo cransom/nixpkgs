@@ -8,54 +8,41 @@
 , rustPlatform
 , stdenv
 }:
-let
-  # The query parser produces a slightly different AST between major versions
-  # and Squawk is not capable of handling >=14 correctly yet.
-  libpg_query13 = libpg_query.overrideAttrs (_: rec {
-    version = "13-2.2.0";
-    src = fetchFromGitHub {
-      owner = "pganalyze";
-      repo = "libpg_query";
-      rev = version;
-      hash = "sha256-gEkcv/j8ySUYmM9lx1hRF/SmuQMYVHwZAIYOaCQWAFs=";
-    };
-  });
-in
+
 rustPlatform.buildRustPackage rec {
   pname = "squawk";
-  version = "0.20.0";
+  version = "1.0.0";
 
   src = fetchFromGitHub {
     owner = "sbdchd";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-v9F+HfscX4dIExIP1YvxOldZPPtmxh8lO3SREu6M+C0=";
+    hash = "sha256-Uc357UspC2O/IxRRTy04jubzhKDRnIAN2CoHvbrGbHg=";
   };
 
-  cargoHash = "sha256-kSaQxqom8LSCOQBoIZ1iv+q2+Ih8l61L97xXv5c4a0k=";
-
-  cargoPatches = [
-    ./correct-Cargo.lock.patch
-  ];
-
-  patches = [
-    ./fix-postgresql-version-in-snapshot-test.patch
-  ];
+  cargoHash = "sha256-G0t3wvcp1Dm0ZCDnzTVf1XJ2Dtr0LyrKM1Vvso0IoaA=";
 
   nativeBuildInputs = [
     pkg-config
     rustPlatform.bindgenHook
   ];
 
-  buildInputs = lib.optionals (!stdenv.isDarwin) [
+  buildInputs = lib.optionals (!stdenv.hostPlatform.isDarwin) [
     libiconv
     openssl
-  ] ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin (with darwin.apple_sdk.frameworks; [
     CoreFoundation
     Security
   ]);
 
-  LIBPG_QUERY_PATH = libpg_query13;
+  OPENSSL_NO_VENDOR = 1;
+
+  LIBPG_QUERY_PATH = libpg_query;
+
+  checkFlags = [
+    # depends on the PostgreSQL version
+    "--skip=parse::tests::test_parse_sql_query_json"
+  ];
 
   meta = with lib; {
     description = "Linter for PostgreSQL, focused on migrations";

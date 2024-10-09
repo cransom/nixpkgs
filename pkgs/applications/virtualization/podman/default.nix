@@ -14,22 +14,73 @@
 , go-md2man
 , nixosTests
 , python3
+, makeWrapper
+, runtimeShell
+, symlinkJoin
+, substituteAll
+, extraPackages ? [ ]
+, crun
+, runc
+, conmon
+, extraRuntimes ? lib.optionals stdenv.hostPlatform.isLinux [ runc ]  # e.g.: runc, gvisor, youki
+, fuse-overlayfs
+, util-linux
+, iptables
+, iproute2
+, catatonit
+, gvproxy
+, aardvark-dns
+, netavark
+, passt
+, vfkit
 , testers
 , podman
 }:
+let
+  # do not add qemu to this wrapper, store paths get written to the podman vm config and break when GCed
 
+  binPath = lib.makeBinPath (lib.optionals stdenv.hostPlatform.isLinux [
+    fuse-overlayfs
+    util-linux
+    iptables
+    iproute2
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    vfkit
+  ] ++ extraPackages);
+
+  helpersBin = symlinkJoin {
+    name = "podman-helper-binary-wrapper";
+
+    # this only works for some binaries, others may need to be added to `binPath` or in the modules
+    paths = [
+      gvproxy
+    ] ++ lib.optionals stdenv.hostPlatform.isLinux [
+      aardvark-dns
+      catatonit # added here for the pause image and also set in `containersConf` for `init_path`
+      netavark
+      passt
+      conmon
+      crun
+    ] ++ extraRuntimes;
+  };
+in
 buildGoModule rec {
   pname = "podman";
-  version = "4.4.1";
+  version = "5.2.3";
 
   src = fetchFromGitHub {
     owner = "containers";
     repo = "podman";
     rev = "v${version}";
-    hash = "sha256-Uha5ueOGNmG2f+1I89uFQKA3pSSp1d02FGy86Fc2eWE=";
+    hash = "sha256-2FnUijeQhre7B4utsGGEGbMuuMVZlPDoM2di3z1d4vs=";
   };
 
   patches = [
+    (substituteAll {
+      src = ./hardcode-paths.patch;
+      bin_path = helpersBin;
+    })
+
     # we intentionally don't build and install the helper so we shouldn't display messages to users about it
     ./rm-podman-mac-helper-msg.patch
   ];
@@ -38,11 +89,11 @@ buildGoModule rec {
 
   doCheck = false;
 
-  outputs = [ "out" "man" ] ++ lib.optionals stdenv.isLinux [ "rootlessport" ];
+  outputs = [ "out" "man" ];
 
-  nativeBuildInputs = [ pkg-config go-md2man installShellFiles python3 ];
+  nativeBuildInputs = [ pkg-config go-md2man installShellFiles makeWrapper python3 ];
 
-  buildInputs = lib.optionals stdenv.isLinux [
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
     btrfs-progs
     gpgme
     libapparmor
@@ -52,13 +103,17 @@ buildGoModule rec {
     systemd
   ];
 
+  HELPER_BINARIES_DIR = "${PREFIX}/libexec/podman"; # used in buildPhase & installPhase
+  PREFIX = "${placeholder "out"}";
+
   buildPhase = ''
     runHook preBuild
     patchShebangs .
-    ${if stdenv.isDarwin then ''
+    substituteInPlace Makefile --replace "/bin/bash" "${runtimeShell}"
+    ${if stdenv.hostPlatform.isDarwin then ''
       make podman-remote # podman-mac-helper uses FHS paths
     '' else ''
-      make bin/podman bin/rootlessport
+      make bin/podman bin/rootlessport bin/quadlet
     ''}
     make docs
     runHook postBuild
@@ -66,26 +121,22 @@ buildGoModule rec {
 
   installPhase = ''
     runHook preInstall
-    mkdir -p {$out/{bin,etc,lib,share},$man} # ensure paths exist for the wrapper
-    ${if stdenv.isDarwin then ''
-      mv bin/{darwin/podman,podman}
+    ${if stdenv.hostPlatform.isDarwin then ''
+      install bin/darwin/podman -Dt $out/bin
     '' else ''
-      install -Dm644 contrib/tmpfile/podman.conf -t $out/lib/tmpfiles.d
-      for s in contrib/systemd/**/*.in; do
-        substituteInPlace "$s" --replace "@@PODMAN@@" "podman" # don't use unwrapped binary
-      done
-      PREFIX=$out make install.systemd
-      install -Dm555 bin/rootlessport -t $rootlessport/bin
+      make install.bin install.systemd
     ''}
-    install -Dm555 bin/podman -t $out/bin
-    PREFIX=$out make install.completions
-    MANDIR=$man/share/man make install.man
+    make install.completions install.man
+    mkdir -p ${HELPER_BINARIES_DIR}
+    ln -s ${helpersBin}/bin/* ${HELPER_BINARIES_DIR}
+    wrapProgram $out/bin/podman \
+      --prefix PATH : ${lib.escapeShellArg binPath}
     runHook postInstall
   '';
 
-  postFixup = lib.optionalString stdenv.isLinux ''
-    RPATH=$(patchelf --print-rpath $out/bin/podman)
-    patchelf --set-rpath "${lib.makeLibraryPath [ systemd ]}":$RPATH $out/bin/podman
+  postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
+    RPATH=$(patchelf --print-rpath $out/bin/.podman-wrapped)
+    patchelf --set-rpath "${lib.makeLibraryPath [ systemd ]}":$RPATH $out/bin/.podman-wrapped
   '';
 
   passthru.tests = {
@@ -93,7 +144,7 @@ buildGoModule rec {
       package = podman;
       command = "HOME=$TMPDIR podman --version";
     };
-  } // lib.optionalAttrs stdenv.isLinux {
+  } // lib.optionalAttrs stdenv.hostPlatform.isLinux {
     inherit (nixosTests) podman;
     # related modules
     inherit (nixosTests)
@@ -104,9 +155,15 @@ buildGoModule rec {
 
   meta = with lib; {
     homepage = "https://podman.io/";
-    description = "A program for managing pods, containers and container images";
+    description = "Program for managing pods, containers and container images";
+    longDescription = ''
+      Podman (the POD MANager) is a tool for managing containers and images, volumes mounted into those containers, and pods made from groups of containers. Podman runs containers on Linux, but can also be used on Mac and Windows systems using a Podman-managed virtual machine. Podman is based on libpod, a library for container lifecycle management that is also contained in this repository. The libpod library provides APIs for managing containers, pods, container images, and volumes.
+
+      To install on NixOS, please use the option `virtualisation.podman.enable = true`.
+    '';
     changelog = "https://github.com/containers/podman/blob/v${version}/RELEASE_NOTES.md";
     license = licenses.asl20;
-    maintainers = with maintainers; [ marsam ] ++ teams.podman.members;
+    maintainers = with maintainers; [ ] ++ teams.podman.members;
+    mainProgram = "podman";
   };
 }

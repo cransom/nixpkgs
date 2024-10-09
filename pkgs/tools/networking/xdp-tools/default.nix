@@ -1,11 +1,11 @@
 { lib
 , stdenv
 , fetchFromGitHub
-, fetchpatch
 , libbpf
 , elfutils
 , zlib
 , libpcap
+, bpftools
 , llvmPackages
 , pkg-config
 , m4
@@ -15,13 +15,13 @@
 }:
 stdenv.mkDerivation rec {
   pname = "xdp-tools";
-  version = "1.2.9";
+  version = "1.4.3";
 
   src = fetchFromGitHub {
     owner = "xdp-project";
     repo = "xdp-tools";
     rev = "v${version}";
-    sha256 = "Q1vaogcAeNjLIPaB0ovOo96hzRv69tMO5xwHh5W4Ws0=";
+    hash = "sha256-eI4sqzTaA4iRmhEY3SgySxWiCzGJ7nVebC2RVlk7OHk=";
   };
 
   outputs = [ "out" "lib" ];
@@ -33,12 +33,15 @@ stdenv.mkDerivation rec {
     zlib
   ];
 
+  depsBuildBuild = [
+    emacs-nox # to generate man pages from .org
+  ];
   nativeBuildInputs = [
+    bpftools
     llvmPackages.clang
     llvmPackages.llvm
     pkg-config
     m4
-    emacs-nox # to generate man pages from .org
     nukeReferences
   ];
   nativeCheckInputs = [
@@ -65,7 +68,7 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     homepage = "https://github.com/xdp-project/xdp-tools";
     description = "Library and utilities for use with XDP";
-    license = with licenses; [ gpl2 lgpl21 bsd2 ];
+    license = with licenses; [ gpl2Only lgpl21 bsd2 ];
     maintainers = with maintainers; [ tirex vcunat vifino ];
     platforms = platforms.linux;
   };

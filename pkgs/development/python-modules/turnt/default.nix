@@ -1,16 +1,25 @@
-{ lib, buildPythonPackage, fetchPypi, click, tomli }:
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  flit-core,
+  click,
+  tomli,
+}:
 
 buildPythonPackage rec {
   pname = "turnt";
-  version = "1.9.0";
-  format = "flit";
+  version = "1.12.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-X0uJmY2MVnvM50LDBXDn9hK4NuHAil4Kf39V/8b8OIQ=";
+    hash = "sha256-4K7cqGwKErGbZ+dxVa06v8aIfrpVLC293d29QT+vsBw=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ flit-core ];
+
+  dependencies = [
     click
     tomli
   ];
@@ -27,6 +36,7 @@ buildPythonPackage rec {
 
   meta = with lib; {
     description = "Snapshot testing tool";
+    mainProgram = "turnt";
     homepage = "https://github.com/cucapra/turnt";
     license = licenses.mit;
     maintainers = with maintainers; [ leungbk ];

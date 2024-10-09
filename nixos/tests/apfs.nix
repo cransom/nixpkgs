@@ -1,8 +1,8 @@
-import ./make-test-python.nix ({ pkgs, ... }: {
+{ lib, ... }: {
   name = "apfs";
-  meta.maintainers = with pkgs.lib.maintainers; [ Luflosi ];
+  meta.maintainers = with lib.maintainers; [ Luflosi ];
 
-  nodes.machine = { pkgs, ... }: {
+  nodes.machine = {
     virtualisation.emptyDiskImages = [ 1024 ];
 
     boot.supportedFilesystems = [ "apfs" ];
@@ -17,6 +17,10 @@ import ./make-test-python.nix ({ pkgs, ... }: {
 
     with subtest("mkapfs works with the maximum label length"):
       machine.succeed("mkapfs -L '000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F707172737475767778797A7B7C7D7E7' /dev/vdb")
+
+    with subtest("apfs-label works"):
+      machine.succeed("mkapfs -L 'myLabel' /dev/vdb")
+      machine.succeed("apfs-label /dev/vdb | grep -q myLabel")
 
     with subtest("Enable case sensitivity and normalization sensitivity"):
       machine.succeed(
@@ -48,5 +52,18 @@ import ./make-test-python.nix ({ pkgs, ... }: {
           "umount /tmp/mnt",
           "apfsck /dev/vdb",
       )
+    with subtest("Snapshots"):
+      machine.succeed(
+          "mkapfs /dev/vdb",
+          "mount -o cknodes,readwrite /dev/vdb /tmp/mnt",
+          "echo 'Hello World' > /tmp/mnt/test.txt",
+          "apfs-snap /tmp/mnt snap-1",
+          "rm /tmp/mnt/test.txt",
+          "umount /tmp/mnt",
+          "mount -o cknodes,readwrite,snap=snap-1 /dev/vdb /tmp/mnt",
+          "echo 'Hello World' | diff - /tmp/mnt/test.txt",
+          "umount /tmp/mnt",
+          "apfsck /dev/vdb",
+      )
   '';
-})
+}

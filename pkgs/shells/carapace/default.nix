@@ -1,31 +1,39 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub, testers, carapace }:
 
 buildGoModule rec {
   pname = "carapace";
-  version = "0.21.0";
+  version = "1.0.7";
 
   src = fetchFromGitHub {
-    owner = "rsteube";
-    repo = "${pname}-bin";
+    owner = "carapace-sh";
+    repo = "carapace-bin";
     rev = "v${version}";
-    sha256 = "sha256-vpYBgDX0CxTNphmdwrI56AtlPlf2DGf3BZ+jWwdanpw=";
+    hash = "sha256-ryFnccCSgQ0qEf3oRPmIO98fx2BlkK2dEFvNk2m9qSo=";
   };
 
-  vendorHash = "sha256-Qi2fkAdO0clpKowSdoxyanIB65oagqEnw5gCqVHPJb0=";
+  vendorHash = "sha256-biJN+WjNK/Fjjd3+ihZcFCu75fup3g9R6lIa6qHco5I=";
+
+  ldflags = [
+    "-s"
+    "-w"
+    "-X main.version=${version}"
+  ];
 
   subPackages = [ "./cmd/carapace" ];
 
   tags = [ "release" ];
 
   preBuild = ''
-    go generate ./...
+    GOOS= GOARCH= go generate ./...
   '';
+
+  passthru.tests.version = testers.testVersion { package = carapace; };
 
   meta = with lib; {
     description = "Multi-shell multi-command argument completer";
-    homepage = "https://rsteube.github.io/carapace-bin/";
-    maintainers = with maintainers; [ mredaelli ];
+    homepage = "https://carapace.sh/";
+    maintainers = with maintainers; [ mimame ];
     license = licenses.mit;
-    platforms = platforms.unix;
+    mainProgram = "carapace";
   };
 }

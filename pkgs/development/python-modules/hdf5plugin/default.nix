@@ -1,31 +1,35 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, h5py
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  py-cpuinfo,
+  h5py,
 }:
 
 buildPythonPackage rec {
   pname = "hdf5plugin";
-  version = "4.1.0";
-  format = "setuptools";
+  version = "5.0.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "silx-kit";
     repo = "hdf5plugin";
     rev = "refs/tags/v${version}";
-    hash = "sha256-fFR5t8jHOQc6eDNDhDcntibaveGAmI+j/dVte1tdcyk=";
+    hash = "sha256-6lEU8ZGJKazDqloel5QcaXAbNGzV1fAbAjYC/hFUOdI=";
   };
 
-  propagatedBuildInputs = [
-    h5py
+  build-system = [
+    setuptools
+    py-cpuinfo
   ];
+
+  dependencies = [ h5py ];
 
   checkPhase = ''
     python test/test.py
   '';
-  pythonImportsCheck = [
-    "hdf5plugin"
-  ];
+  pythonImportsCheck = [ "hdf5plugin" ];
 
   preBuild = ''
     mkdir src/hdf5plugin/plugins
@@ -39,7 +43,6 @@ buildPythonPackage rec {
     '';
     homepage = "http://www.silx.org/doc/hdf5plugin/latest/";
     license = licenses.mit;
-    maintainers = with maintainers; [ bhipple ];
+    maintainers = with maintainers; [ pbsds ];
   };
-
 }

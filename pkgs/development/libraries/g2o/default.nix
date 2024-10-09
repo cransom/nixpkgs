@@ -1,27 +1,26 @@
 { lib, stdenv, mkDerivation, fetchFromGitHub, cmake, eigen, suitesparse, blas
-, lapack, libGLU, qtbase, libqglviewer, makeWrapper }:
+, lapack, libGLU, qtbase, libqglviewer, spdlog }:
 
 mkDerivation rec {
   pname = "g2o";
-  version = "20201223";
+  version = "20230806";
 
   src = fetchFromGitHub {
     owner = "RainerKuemmerle";
     repo = pname;
     rev = "${version}_git";
-    sha256 = "sha256-Ik6uBz4Z4rc5+mPNdT8vlNZSBom4Tvt8Y6myBC/s0m8=";
+    hash = "sha256-9u1FFRWe7qvDhzSKdGTduuGBXmmgzcSriGFb/oCJjNA=";
   };
 
   # Removes a reference to gcc that is only used in a debug message
   patches = [ ./remove-compiler-reference.patch ];
 
+  outputs = [ "out" "dev" ];
   separateDebugInfo = true;
 
-  nativeBuildInputs = [ cmake makeWrapper ];
+  nativeBuildInputs = [ cmake ];
   buildInputs = [ eigen suitesparse blas lapack libGLU qtbase libqglviewer ];
-
-  # Silence noisy warning
-  CXXFLAGS = "-Wno-deprecated-copy";
+  propagatedBuildInputs = [ spdlog ];
 
   dontWrapQtApps = true;
 
@@ -29,7 +28,7 @@ mkDerivation rec {
     # Detection script is broken
     "-DQGLVIEWER_INCLUDE_DIR=${libqglviewer}/include/QGLViewer"
     "-DG2O_BUILD_EXAMPLES=OFF"
-  ] ++ lib.optionals stdenv.isx86_64 [
+  ] ++ lib.optionals stdenv.hostPlatform.isx86_64 [
     "-DDO_SSE_AUTODETECT=OFF"
     "-DDISABLE_SSE3=${  if stdenv.hostPlatform.sse3Support   then "OFF" else "ON"}"
     "-DDISABLE_SSE4_1=${if stdenv.hostPlatform.sse4_1Support then "OFF" else "ON"}"
@@ -38,12 +37,12 @@ mkDerivation rec {
   ];
 
   meta = with lib; {
-    description = "A General Framework for Graph Optimization";
+    description = "General Framework for Graph Optimization";
     homepage = "https://github.com/RainerKuemmerle/g2o";
     license = with licenses; [ bsd3 lgpl3 gpl3 ];
     maintainers = with maintainers; [ lopsided98 ];
     platforms = platforms.all;
     # fatal error: 'qglviewer.h' file not found
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
   };
 }

@@ -1,5 +1,4 @@
-{ lib
-, buildDunePackage
+{ buildDunePackage
 , shared-memory-ring
 , ppx_cstruct
 , cstruct
@@ -13,6 +12,8 @@ buildDunePackage {
   pname = "shared-memory-ring-lwt";
 
   inherit (shared-memory-ring) version src;
+
+  duneVersion = "3";
 
   buildInputs = [
     ppx_cstruct

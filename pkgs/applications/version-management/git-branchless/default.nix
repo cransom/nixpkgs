@@ -1,41 +1,48 @@
-{ lib
-, fetchFromGitHub
-, git
-, libiconv
-, ncurses
-, openssl
-, pkg-config
-, rustPlatform
-, sqlite
-, stdenv
-, Security
-, SystemConfiguration
+{
+  lib,
+  fetchFromGitHub,
+  git,
+  libiconv,
+  ncurses,
+  openssl,
+  pkg-config,
+  rustPlatform,
+  sqlite,
+  stdenv,
+  Security,
+  SystemConfiguration,
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "git-branchless";
-  version = "0.6.0";
+  version = "0.9.0";
 
   src = fetchFromGitHub {
     owner = "arxanas";
     repo = "git-branchless";
     rev = "v${version}";
-    sha256 = "sha256-Rf7ai+s2Fp/RFA4on9YBoTjFpvzSZtAHf0rytfZf0rc=";
+    hash = "sha256-4RRSffkAe0/8k4SNnlB1iiaW4gWFTuYXplVBj2aRIdU=";
   };
 
-  cargoSha256 = "sha256-GVo0t2dJ6R+1UJf/NlKd5QLIQfDdFEHa+FSeW/Hk/4c=";
+  cargoHash = "sha256-Jg4d7tJXr2O1sEDdB/zk+7TPBZvgHlmW8mNiXozLKV8=";
 
   nativeBuildInputs = [ pkg-config ];
 
-  buildInputs = [
-    ncurses
-    openssl
-    sqlite
-  ] ++ lib.optionals stdenv.isDarwin [
-    Security
-    SystemConfiguration
-    libiconv
-  ];
+  buildInputs =
+    [
+      ncurses
+      openssl
+      sqlite
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      Security
+      SystemConfiguration
+      libiconv
+    ];
+
+  postInstall = ''
+    $out/bin/git-branchless install-man-pages $out/share/man
+  '';
 
   preCheck = ''
     export TEST_GIT=${git}/bin/git
@@ -49,9 +56,13 @@ rustPlatform.buildRustPackage rec {
   ];
 
   meta = with lib; {
-    description = "A suite of tools to help you visualize, navigate, manipulate, and repair your commit history";
+    description = "Suite of tools to help you visualize, navigate, manipulate, and repair your commit history";
     homepage = "https://github.com/arxanas/git-branchless";
     license = licenses.gpl2Only;
-    maintainers = with maintainers; [ msfjarvis nh2 hmenke ];
+    mainProgram = "git-branchless";
+    maintainers = with maintainers; [
+      nh2
+      hmenke
+    ];
   };
 }

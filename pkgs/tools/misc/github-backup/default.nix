@@ -1,17 +1,25 @@
 { lib
-, python3
+, python3Packages
+, fetchFromGitHub
 , git
 , git-lfs
 }:
 
-python3.pkgs.buildPythonApplication rec {
+python3Packages.buildPythonApplication rec {
   pname = "github-backup";
-  version = "0.42.0";
+  version = "0.46.0";
+  pyproject = true;
 
-  src = python3.pkgs.fetchPypi {
-    inherit pname version;
-    sha256 = "sha256-tFfS3Z7xrbN2QEOrYcUVd8/YwGKfmR2NaUBeXuSL+tY=";
+  src = fetchFromGitHub {
+    owner = "josegonzalez";
+    repo = "python-github-backup";
+    rev = "refs/tags/${version}";
+    hash = "sha256-kSxkD8vWBvaT7C0sS9rs3CEP2yeWsAJ0kjPlrGezoLU=";
   };
+
+  build-system = with python3Packages; [
+    setuptools
+  ];
 
   makeWrapperArgs = [
     "--prefix" "PATH" ":" (lib.makeBinPath [ git git-lfs ])
@@ -23,7 +31,9 @@ python3.pkgs.buildPythonApplication rec {
   meta = with lib; {
     description = "Backup a github user or organization";
     homepage = "https://github.com/josegonzalez/python-github-backup";
+    changelog = "https://github.com/josegonzalez/python-github-backup/blob/${version}/CHANGES.rst";
     license = licenses.mit;
     maintainers = with maintainers; [ dotlambda ];
+    mainProgram = "github-backup";
   };
 }

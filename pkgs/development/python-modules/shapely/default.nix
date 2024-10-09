@@ -1,50 +1,52 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, fetchPypi
-, cython
-, geos
-, setuptools
-, numpy
-, pytestCheckHook
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchPypi,
+  pytestCheckHook,
+  pythonOlder,
+
+  cython_0,
+  geos,
+  numpy,
+  oldest-supported-numpy,
+  setuptools,
+  wheel,
 }:
 
 buildPythonPackage rec {
   pname = "shapely";
-  version = "2.0.0";
-  format = "pyproject";
+  version = "2.0.6";
+  pyproject = true;
 
   disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-EfGxIxpsBCE/sSJsaWjRsbOzaexC0ellUGavh2MYYOo=";
+    hash = "sha256-mX9hWbFIQFnsI5ysqlNGf9i1Vk2r4YbNhKwpRGY7C/Y=";
   };
 
   nativeBuildInputs = [
-    cython
+    cython_0
     geos # for geos-config
+    oldest-supported-numpy
     setuptools
+    wheel
   ];
 
-  buildInputs = [
-    geos
-  ];
+  buildInputs = [ geos ];
 
-  propagatedBuildInputs = [
-    numpy
-  ];
+  propagatedBuildInputs = [ numpy ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
+  # Fix a ModuleNotFoundError. Investigated at:
+  # https://github.com/NixOS/nixpkgs/issues/255262
   preCheck = ''
-    rm -r shapely # prevent import of local shapely
+    cd $out
   '';
 
-  disabledTests = lib.optionals (stdenv.isDarwin && stdenv.isAarch64) [
+  disabledTests = lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) [
     # FIXME(lf-): these logging tests are broken, which is definitely our
     # fault. I've tried figuring out the cause and failed.
     #
@@ -62,6 +64,6 @@ buildPythonPackage rec {
     description = "Manipulation and analysis of geometric objects";
     homepage = "https://github.com/shapely/shapely";
     license = licenses.bsd3;
-    maintainers = with maintainers; [ knedlsepp ];
+    maintainers = teams.geospatial.members;
   };
 }

@@ -1,26 +1,27 @@
-{ clang
-, cmake
+{ cmake
+, CoreFoundation
 , fetchFromGitHub
 , fetchurl
 , lib
 , lighthouse
-, llvmPackages
+, nix-update-script
 , nodePackages
-, perl
+, openssl
+, pkg-config
+, postgresql
 , protobuf
 , rustPlatform
+, rust-jemalloc-sys
 , Security
-, CoreFoundation
+, sqlite
 , stdenv
-, testers
-, unzip
-, nix-update-script
 , SystemConfiguration
+, testers
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "lighthouse";
-  version = "3.4.0";
+  version = "5.3.0";
 
   # lighthouse/common/deposit_contract/build.rs
   depositContractSpecVersion = "0.12.1";
@@ -30,19 +31,45 @@ rustPlatform.buildRustPackage rec {
     owner = "sigp";
     repo = "lighthouse";
     rev = "v${version}";
-    hash = "sha256-4auiM5+kj/HjZKu2YP7JEnwDNxHuL39XCfmV/dc5jLE=";
+    hash = "sha256-wIj+YabyUrgLjWCfjCAH/Xb8jUG6ss+5SwnE2M82a+4=";
   };
 
-  cargoHash = "sha256-ihfGwdxL7Ttw86dhaVBp5meb0caXjzgbbP27Io8zv/c=";
+  patches = [
+    ./use-system-sqlite.patch
+    ./fix-dep-lazy_static.patch
+  ];
+
+  postPatch = ''
+    cp ${./Cargo.lock} Cargo.lock
+  '';
+
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "libmdbx-0.1.4" = "sha256-ONp4uPkVCN84MObjXorCZuSjnM6uFSMXK1vdJiX074o=";
+      "lmdb-rkv-0.14.0" = "sha256-sxmguwqqcyOlfXOZogVz1OLxfJPo+Q0+UjkROkbbOCk=";
+      "quick-protobuf-0.8.1" = "sha256-dgePLYCeoEZz5DGaLifhf3gEIPaL7XB0QT9wRKY8LJg=";
+    };
+  };
 
   buildFeatures = [ "modern" "gnosis" ];
 
-  nativeBuildInputs = [ rustPlatform.bindgenHook cmake perl protobuf ];
+  nativeBuildInputs = [
+    rustPlatform.bindgenHook
+    cmake
+    pkg-config
+    protobuf
+  ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [
+  buildInputs = [
+    rust-jemalloc-sys
+    sqlite
+  ] ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
+    openssl
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    CoreFoundation
     Security
-  ] ++ lib.optionals (stdenv.isDarwin && stdenv.isx86_64) [
-    CoreFoundation SystemConfiguration
+    SystemConfiguration
   ];
 
   depositContractSpec = fetchurl {
@@ -58,6 +85,8 @@ rustPlatform.buildRustPackage rec {
   LIGHTHOUSE_DEPOSIT_CONTRACT_SPEC_URL = "file://${depositContractSpec}";
   LIGHTHOUSE_DEPOSIT_CONTRACT_TESTNET_URL = "file://${testnetDepositContractSpec}";
 
+  OPENSSL_NO_VENDOR = true;
+
   cargoBuildFlags = [
     "--package lighthouse"
   ];
@@ -66,29 +95,44 @@ rustPlatform.buildRustPackage rec {
 
   checkFeatures = [ ];
 
-  # All of these tests require network access
+  # All of these tests require network access and/or docker
   cargoTestFlags = [
     "--workspace"
+    "--exclude beacon_chain"
     "--exclude beacon_node"
     "--exclude http_api"
-    "--exclude beacon_chain"
     "--exclude lighthouse"
     "--exclude lighthouse_network"
+    "--exclude network"
     "--exclude slashing_protection"
+    "--exclude watch"
     "--exclude web3signer_tests"
   ];
 
   # All of these tests require network access
   checkFlags = [
+    "--skip basic"
+    "--skip deposit_tree::cache_consistency"
+    "--skip deposit_tree::double_update"
+    "--skip deposit_tree::updating"
+    "--skip eth1_cache::big_skip"
+    "--skip eth1_cache::double_update"
+    "--skip eth1_cache::pruning"
+    "--skip eth1_cache::simple_scenario"
+    "--skip fast::deposit_cache_query"
+    "--skip http::incrementing_deposits"
+    "--skip persist::test_persist_caches"
     "--skip service::tests::tests::test_dht_persistence"
     "--skip time::test::test_reinsertion_updates_timeout"
-  ] ++ lib.optionals (stdenv.isAarch64 && stdenv.isDarwin) [
+  ] ++ lib.optionals (stdenv.hostPlatform.isAarch64 && stdenv.hostPlatform.isDarwin) [
+    "--skip subnet_service::tests::attestation_service::test_subscribe_same_subnet_several_slots_apart"
     "--skip subnet_service::tests::sync_committee_service::same_subscription_with_lower_until_epoch"
     "--skip subnet_service::tests::sync_committee_service::subscribe_and_unsubscribe"
   ];
 
   nativeCheckInputs = [
     nodePackages.ganache
+    postgresql
   ];
 
   passthru = {
@@ -100,10 +144,17 @@ rustPlatform.buildRustPackage rec {
     updateScript = nix-update-script { };
   };
 
+  enableParallelBuilding = true;
+
+  # This is needed by the unit tests.
+  FORK_NAME = "capella";
+
   meta = with lib; {
     description = "Ethereum consensus client in Rust";
     homepage = "https://lighthouse.sigmaprime.io/";
     license = licenses.asl20;
     maintainers = with maintainers; [ centromere pmw ];
+    mainProgram = "lighthouse";
+    broken = stdenv.hostPlatform.isDarwin;
   };
 }

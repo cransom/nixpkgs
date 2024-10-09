@@ -1,14 +1,14 @@
-{ lib, stdenv, fetchFromGitHub, python3, cmake, libglvnd, libGLU }:
+{ lib, stdenv, fetchFromGitHub, python3, cmake, libglvnd, libGLU, unstableGitUpdater }:
 
 stdenv.mkDerivation rec {
   pname = "gl3w";
-  version = "unstable-2022-03-24";
+  version = "0-unstable-2023-10-10";
 
   src = fetchFromGitHub {
     owner = "skaslev";
     repo = pname;
-    rev = "5f8d7fd191ba22ff2b60c1106d7135bb9a335533";
-    hash = "sha256-qV/PZmaP5iCHhIzTA2bE4d1RMB6LzRbTsB5gWVvi9bU=";
+    rev = "3a33275633ce4be433332dc776e6a5b3bdea6506";
+    hash = "sha256-kEm5QItpasSFJQ32YBHPpc+itz/nQ8bQMCavbOTGT/w=";
   };
 
   nativeBuildInputs = [ python3 cmake ];
@@ -27,11 +27,13 @@ stdenv.mkDerivation rec {
     cp ${libglvnd.dev}/include/KHR/khrplatform.h include/KHR/khrplatform.h
   '';
 
+  passthru.updateScript = unstableGitUpdater { };
+
   meta = with lib; {
     description = "Simple OpenGL core profile loading";
     homepage = "https://github.com/skaslev/gl3w";
     license = licenses.unlicense;
-    maintainers = with maintainers; [ lilyinstarlight ];
+    maintainers = [ ];
     platforms = platforms.unix;
   };
 }

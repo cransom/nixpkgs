@@ -10,13 +10,13 @@
 }:
 stdenv.mkDerivation rec {
   pname = "uacme";
-  version = "1.7.3";
+  version = "1.7.5";
 
   src = fetchFromGitHub {
     owner = "ndilieto";
     repo = "uacme";
     rev = "v${version}";
-    hash = "sha256-kgS+QOB63Q1cNa4gk527G4hHFdiCL6JqmoVQRAVMUDw=";
+    hash = "sha256-MaPMNAUuQmJAbl7qBqNCkzW4k6nkibezEMRaCho5I68=";
   };
 
   configureFlags = [ "--with-openssl" ];
@@ -38,5 +38,7 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/ndilieto/uacme";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ malte-v ];
+    platforms = platforms.unix;
+    broken = stdenv.hostPlatform.isDarwin;
   };
 }

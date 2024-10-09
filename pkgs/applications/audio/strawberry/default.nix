@@ -10,6 +10,7 @@
 , fftw
 , gnutls
 , libcdio
+, libebur128
 , libmtp
 , libpthreadstubs
 , libtasn1
@@ -34,21 +35,23 @@
 , gst_all_1
 , withVlc ? true
 , libvlc
+, nix-update-script
 }:
 
 let
-  inherit (lib) optionals;
+  inherit (lib) optionals optionalString;
 
 in
 stdenv.mkDerivation rec {
   pname = "strawberry";
-  version = "1.0.14";
+  version = "1.1.2";
 
   src = fetchFromGitHub {
     owner = "jonaski";
     repo = pname;
     rev = version;
-    hash = "sha256-ThfycS5yNpp6+mE33qPqEWlhSB3OIF7d/t2XvI+rF2E=";
+    hash = "sha256-86AMmp8R9/NibTsMFTTFcMeIqZ5x8din9RcBvhGO9xg=";
+    fetchSubmodules = true;
   };
 
   # the big strawberry shown in the context menu is *very* much in your face, so use the grey version instead
@@ -64,6 +67,7 @@ stdenv.mkDerivation rec {
     fftw
     gnutls
     libcdio
+    libebur128
     libidn2
     libmtp
     libpthreadstubs
@@ -75,7 +79,7 @@ stdenv.mkDerivation rec {
     taglib
     qtbase
     qtx11extras
-  ] ++ optionals stdenv.isLinux [
+  ] ++ optionals stdenv.hostPlatform.isLinux [
     libgpod
     libpulseaudio
     libselinux
@@ -89,7 +93,7 @@ stdenv.mkDerivation rec {
     gst-plugins-good
     gst-plugins-bad
     gst-plugins-ugly
-  ]) ++ lib.optional withVlc libvlc;
+  ]) ++ optionals withVlc [ libvlc ];
 
   nativeBuildInputs = [
     cmake
@@ -97,16 +101,18 @@ stdenv.mkDerivation rec {
     pkg-config
     qttools
     wrapQtAppsHook
-  ] ++ optionals stdenv.isLinux [
+  ] ++ optionals stdenv.hostPlatform.isLinux [
     util-linux
   ];
 
-  postInstall = lib.optionalString withGstreamer ''
+  postInstall = optionalString withGstreamer ''
     qtWrapperArgs+=(
       --prefix GST_PLUGIN_SYSTEM_PATH_1_0 : "$GST_PLUGIN_SYSTEM_PATH_1_0"
       --prefix GIO_EXTRA_MODULES : "${glib-networking.out}/lib/gio/modules"
     )
   '';
+
+  passthru.updateScript = nix-update-script { };
 
   meta = with lib; {
     description = "Music player and music collection organizer";
@@ -116,5 +122,6 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ peterhoeg ];
     # upstream says darwin should work but they lack maintainers as of 0.6.6
     platforms = platforms.linux;
+    mainProgram = "strawberry";
   };
 }

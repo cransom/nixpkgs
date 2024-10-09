@@ -174,8 +174,6 @@ commands:
 OK
 > set_network 0 psk "mypassword"
 OK
-> set_network 0 key_mgmt WPA-PSK
-OK
 > enable_network 0
 OK
 ```
@@ -190,8 +188,6 @@ OK
 > set_network 0 identity "myname@example.com"
 OK
 > set_network 0 password "mypassword"
-OK
-> set_network 0 key_mgmt WPA-EAP
 OK
 > enable_network 0
 OK
@@ -224,6 +220,8 @@ The NixOS installer ships with multiple partitioning tools. The examples
 below use `parted`, but also provides `fdisk`, `gdisk`, `cfdisk`, and
 `cgdisk`.
 
+Use the command 'lsblk' to find the name of your 'disk' device.
+
 The recommended partition scheme differs depending if the computer uses
 *Legacy Boot* or *UEFI*.
 
@@ -249,14 +247,14 @@ update /etc/fstab.
     which will be used by the boot partition.
 
     ```ShellSession
-    # parted /dev/sda -- mkpart primary 512MB -8GB
+    # parted /dev/sda -- mkpart root ext4 512MB -8GB
     ```
 
 3.  Next, add a *swap* partition. The size required will vary according
     to needs, here a 8GB one is created.
 
     ```ShellSession
-    # parted /dev/sda -- mkpart primary linux-swap -8GB 100%
+    # parted /dev/sda -- mkpart swap linux-swap -8GB 100%
     ```
 
     ::: {.note}
@@ -272,6 +270,9 @@ update /etc/fstab.
     # parted /dev/sda -- mkpart ESP fat32 1MB 512MB
     # parted /dev/sda -- set 3 esp on
     ```
+    ::: {.note}
+    In case you decided to not create a swap partition, replace `3` by `2`. To be sure of the id number of ESP, run `parted --list`.
+    :::
 
 Once complete, you can follow with
 [](#sec-installation-manual-partitioning-formatting).
@@ -373,7 +374,7 @@ Use the following commands:
 
     ```ShellSession
     # mkdir -p /mnt/boot
-    # mount /dev/disk/by-label/boot /mnt/boot
+    # mount -o umask=077 /dev/disk/by-label/boot /mnt/boot
     ```
 
 3.  If your machine has a limited amount of memory, you may want to
@@ -428,7 +429,7 @@ Use the following commands:
 
     UEFI systems
 
-    :   You must select a boot-loader, either system-boot or GRUB. The recommended
+    :   You must select a boot-loader, either systemd-boot or GRUB. The recommended
         option is systemd-boot: set the option [](#opt-boot.loader.systemd-boot.enable)
         to `true`. `nixos-generate-config` should do this automatically
         for new configurations when booted in UEFI mode.
@@ -441,10 +442,10 @@ Use the following commands:
         If you want to use GRUB, set [](#opt-boot.loader.grub.device) to `nodev` and
         [](#opt-boot.loader.grub.efiSupport) to `true`.
 
-        With system-boot, you should not need any special configuration to detect
+        With systemd-boot, you should not need any special configuration to detect
         other installed systems. With GRUB, set [](#opt-boot.loader.grub.useOSProber)
-        to `true`, but this will only detect windows partitions, not other linux
-        distributions. If you dual boot another linux distribution, use system-boot
+        to `true`, but this will only detect windows partitions, not other Linux
+        distributions. If you dual boot another Linux distribution, use systemd-boot
         instead.
 
     If you need to configure networking for your machine the
@@ -497,6 +498,12 @@ Use the following commands:
     Retype new password: ***
     ```
 
+    If you have a user account declared in your `configuration.nix` and plan to log in using this user, set a password before rebooting, e.g. for the `alice` user:
+
+    ```ShellSession
+    # nixos-enter --root /mnt -c 'passwd alice'
+    ```
+
     ::: {.note}
     For unattended installations, it is possible to use
     `nixos-install --no-root-passwd` in order to disable the password
@@ -516,15 +523,13 @@ Use the following commands:
     menu. This allows you to easily roll back to a previous
     configuration if something goes wrong.
 
-    You should log in and change the `root` password with `passwd`.
+    Use your declared user account to log in.
+    If you didn’t declare one, you should still be able to log in using the `root` user.
 
-    You'll probably want to create some user accounts as well, which can
-    be done with `useradd`:
-
-    ```ShellSession
-    $ useradd -c 'Eelco Dolstra' -m eelco
-    $ passwd eelco
-    ```
+    ::: {.note}
+    Some graphical display managers such as SDDM do not allow `root` login by default, so you might need to switch to TTY.
+    Refer to [](#sec-user-management) for details on declaring user accounts.
+    :::
 
     You may also want to install some software. This will be covered in
     [](#sec-package-management).
@@ -538,7 +543,7 @@ drive (here `/dev/sda`). [Example: NixOS Configuration](#ex-config) shows a
 corresponding configuration Nix expression.
 
 ::: {#ex-partition-scheme-MBR .example}
-**Example: Example partition schemes for NixOS on `/dev/sda` (MBR)**
+### Example partition schemes for NixOS on `/dev/sda` (MBR)
 ```ShellSession
 # parted /dev/sda -- mklabel msdos
 # parted /dev/sda -- mkpart primary 1MB -8GB
@@ -547,18 +552,18 @@ corresponding configuration Nix expression.
 :::
 
 ::: {#ex-partition-scheme-UEFI .example}
-**Example: Example partition schemes for NixOS on `/dev/sda` (UEFI)**
+### Example partition schemes for NixOS on `/dev/sda` (UEFI)
 ```ShellSession
 # parted /dev/sda -- mklabel gpt
-# parted /dev/sda -- mkpart primary 512MB -8GB
-# parted /dev/sda -- mkpart primary linux-swap -8GB 100%
+# parted /dev/sda -- mkpart root ext4 512MB -8GB
+# parted /dev/sda -- mkpart swap linux-swap -8GB 100%
 # parted /dev/sda -- mkpart ESP fat32 1MB 512MB
 # parted /dev/sda -- set 3 esp on
 ```
 :::
 
 ::: {#ex-install-sequence .example}
-**Example: Commands for Installing NixOS on `/dev/sda`**
+### Commands for Installing NixOS on `/dev/sda`
 
 With a partitioned disk.
 
@@ -569,7 +574,7 @@ With a partitioned disk.
 # mkfs.fat -F 32 -n boot /dev/sda3        # (for UEFI systems only)
 # mount /dev/disk/by-label/nixos /mnt
 # mkdir -p /mnt/boot                      # (for UEFI systems only)
-# mount /dev/disk/by-label/boot /mnt/boot # (for UEFI systems only)
+# mount -o umask=077 /dev/disk/by-label/boot /mnt/boot # (for UEFI systems only)
 # nixos-generate-config --root /mnt
 # nano /mnt/etc/nixos/configuration.nix
 # nixos-install
@@ -578,7 +583,7 @@ With a partitioned disk.
 :::
 
 ::: {#ex-config .example}
-**Example: NixOS Configuration**
+### Example: NixOS Configuration
 ```ShellSession
 { config, pkgs, ... }: {
   imports = [
@@ -602,11 +607,11 @@ With a partitioned disk.
 
 ## Additional installation notes {#sec-installation-additional-notes}
 
-```{=docbook}
-<xi:include href="installing-usb.section.xml" />
-<xi:include href="installing-pxe.section.xml" />
-<xi:include href="installing-kexec.section.xml" />
-<xi:include href="installing-virtualbox-guest.section.xml" />
-<xi:include href="installing-from-other-distro.section.xml" />
-<xi:include href="installing-behind-a-proxy.section.xml" />
+```{=include=} sections
+installing-usb.section.md
+installing-pxe.section.md
+installing-kexec.section.md
+installing-virtualbox-guest.section.md
+installing-from-other-distro.section.md
+installing-behind-a-proxy.section.md
 ```

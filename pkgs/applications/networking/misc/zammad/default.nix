@@ -1,13 +1,15 @@
 { stdenv
 , lib
+, nixosTests
 , fetchFromGitHub
+, fetchYarnDeps
 , applyPatches
 , bundlerEnv
 , defaultGemConfig
 , callPackage
 , writeText
 , procps
-, ruby_2_7
+, ruby
 , postgresql
 , imlib2
 , jq
@@ -15,24 +17,26 @@
 , nodejs
 , yarn
 , yarn2nix-moretea
-, v8
 , cacert
+, redis
 }:
 
 let
   pname = "zammad";
-  version = "5.1.1";
+  version = "6.3.1";
 
   src = applyPatches {
 
     src = fetchFromGitHub (lib.importJSON ./source.json);
 
-    patches = [ ./0001-nulldb.patch ];
+    patches = [
+      ./fix-sendmail-location.diff
+    ];
 
     postPatch = ''
-      sed -i -e "s|ruby '2.7.4'|ruby '${ruby_2_7.version}'|" Gemfile
-      sed -i -e "s|ruby 2.7.4p191|ruby ${ruby_2_7.version}|" Gemfile.lock
-      sed -i -e "s|2.7.4|${ruby_2_7.version}|" .ruby-version
+      sed -i -e "s|ruby '3.2.[0-9]\+'|ruby '${ruby.version}'|" Gemfile
+      sed -i -e "s|ruby 3.2.[0-9]\+p[0-9]\+|ruby ${ruby.version}|" Gemfile.lock
+      sed -i -e "s|3.2.[0-9]\+|${ruby.version}|" .ruby-version
       ${jq}/bin/jq '. += {name: "Zammad", version: "${version}"}' package.json | ${moreutils}/bin/sponge package.json
     '';
   };
@@ -53,14 +57,13 @@ let
 
     # Which ruby version to select:
     #   https://docs.zammad.org/en/latest/prerequisites/software.html#ruby-programming-language
-    inherit ruby_2_7;
+    inherit ruby;
 
     gemdir = src;
     gemset = ./gemset.nix;
     groups = [
       "assets"
       "unicorn" # server
-      "nulldb"
       "test"
       "mysql"
       "puma"
@@ -69,7 +72,7 @@ let
     ];
     gemConfig = defaultGemConfig // {
       pg = attrs: {
-        buildFlags = [ "--with-pg-config=${postgresql}/bin/pg_config" ];
+        buildFlags = [ "--with-pg-config=${lib.getDev postgresql}/bin/pg_config" ];
       };
       rszr = attrs: {
         buildInputs = [ imlib2 imlib2.dev ];
@@ -77,7 +80,7 @@ let
       };
       mini_racer = attrs: {
         buildFlags = [
-          "--with-v8-dir=\"${v8}\""
+          "--with-v8-dir=\"${nodejs.libv8}\""
         ];
         dontBuild = false;
         postPatch = ''
@@ -91,9 +94,20 @@ let
   yarnEnv = yarn2nix-moretea.mkYarnPackage {
     pname = "${pname}-node-modules";
     inherit version src;
-    yarnLock = ./yarn.lock;
-    yarnNix = ./yarn.nix;
     packageJSON = ./package.json;
+
+    offlineCache = fetchYarnDeps {
+      yarnLock = "${src}/yarn.lock";
+      hash = "sha256-3DuTirYd6lAQd5PRbdOa/6QaMknIqNMTVnxEESF0N/c=";
+    };
+
+    packageResolutions.minimatch = "9.0.3";
+
+    yarnPreBuild = ''
+      mkdir -p deps/Zammad
+      cp -r ${src}/.eslint-plugin-zammad deps/Zammad/.eslint-plugin-zammad
+      chmod -R +w deps/Zammad/.eslint-plugin-zammad
+    '';
   };
 
 in
@@ -110,13 +124,34 @@ stdenv.mkDerivation {
     cacert
   ];
 
+  nativeBuildInputs = [
+    redis
+    postgresql
+  ];
+
   RAILS_ENV = "production";
 
   buildPhase = ''
     node_modules=${yarnEnv}/libexec/Zammad/node_modules
     ${yarn2nix-moretea.linkNodeModulesHook}
 
-    rake DATABASE_URL="nulldb://user:pass@127.0.0.1/dbname" assets:precompile
+    mkdir redis-work
+    pushd redis-work
+    redis-server &
+    REDIS_PID=$!
+    popd
+
+    mkdir postgres-work
+    initdb -D postgres-work --encoding=utf8
+    pg_ctl start -D postgres-work -o "-k $PWD/postgres-work -h '''"
+    createuser -h $PWD/postgres-work zammad -R -S
+    createdb -h $PWD/postgres-work --encoding=utf8 --owner=zammad zammad
+
+    rake DATABASE_URL="postgresql:///zammad?host=$PWD/postgres-work" assets:precompile
+
+    kill $REDIS_PID
+    pg_ctl stop -D postgres-work -m immediate
+    rm -r redis-work postgres-work
   '';
 
   installPhase = ''
@@ -129,13 +164,14 @@ stdenv.mkDerivation {
   passthru = {
     inherit rubyEnv yarnEnv;
     updateScript = [ "${callPackage ./update.nix {}}/bin/update.sh" pname (toString ./.) ];
+    tests = { inherit (nixosTests) zammad; };
   };
 
   meta = with lib; {
-    description = "Zammad, a web-based, open source user support/ticketing solution.";
+    description = "Zammad, a web-based, open source user support/ticketing solution";
     homepage = "https://zammad.org";
     license = licenses.agpl3Plus;
-    platforms = [ "x86_64-linux" ];
-    maintainers = with maintainers; [ n0emis garbas taeer ];
+    platforms = [ "x86_64-linux" "aarch64-linux" ];
+    maintainers = with maintainers; [ n0emis taeer netali ];
   };
 }

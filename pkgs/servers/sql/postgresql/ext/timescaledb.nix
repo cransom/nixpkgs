@@ -1,19 +1,8 @@
-{ lib, stdenv, fetchFromGitHub, cmake, postgresql, openssl, libkrb5 }:
-
-# # To enable on NixOS:
-# config.services.postgresql = let
-#   # The postgresql pkgs has to be taken from the
-#   # postgresql package used, so the extensions
-#   # are built for the correct postgresql version.
-#   postgresqlPackages = config.services.postgresql.package.pkgs;
-# in {
-#   extraPlugins = with postgresqlPackages; [ timescaledb ];
-#   settings.shared_preload_libraries = "timescaledb";
-# }
+{ lib, stdenv, fetchFromGitHub, cmake, postgresql, openssl, libkrb5, nixosTests, enableUnfree ? true }:
 
 stdenv.mkDerivation rec {
-  pname = "timescaledb";
-  version = "2.9.3";
+  pname = "timescaledb${lib.optionalString (!enableUnfree) "-apache"}";
+  version = "2.14.2";
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ postgresql openssl libkrb5 ];
@@ -22,11 +11,12 @@ stdenv.mkDerivation rec {
     owner = "timescale";
     repo = "timescaledb";
     rev = version;
-    sha256 = "sha256-eUn/sk2l/2aEGXupRPNDrbrIpUA3aNPo3tBJhmBoeXk=";
+    hash = "sha256-gJViEWHtIczvIiQKuvvuwCfWJMxAYoBhCHhD75no6r0=";
   };
 
   cmakeFlags = [ "-DSEND_TELEMETRY_DEFAULT=OFF" "-DREGRESS_CHECKS=OFF" "-DTAP_CHECKS=OFF" ]
-    ++ lib.optionals stdenv.isDarwin [ "-DLINTER=OFF" ];
+    ++ lib.optionals (!enableUnfree) [ "-DAPACHE_ONLY=ON" ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ "-DLINTER=OFF" ];
 
   # Fix the install phase which tries to install into the pgsql extension dir,
   # and cannot be manually overridden. This is rather fragile but works OK.
@@ -42,13 +32,15 @@ stdenv.mkDerivation rec {
     done
   '';
 
+  passthru.tests = { inherit (nixosTests) timescaledb; };
+
   meta = with lib; {
     description = "Scales PostgreSQL for time-series data via automatic partitioning across time and space";
     homepage = "https://www.timescale.com/";
-    changelog = "https://github.com/timescale/timescaledb/raw/${version}/CHANGELOG.md";
-    maintainers = with maintainers; [ marsam ];
+    changelog = "https://github.com/timescale/timescaledb/blob/${version}/CHANGELOG.md";
+    maintainers = [ ];
     platforms = postgresql.meta.platforms;
-    license = licenses.asl20;
-    broken = versionOlder postgresql.version "12";
+    license = with licenses; if enableUnfree then tsl else asl20;
+    broken = versionOlder postgresql.version "13";
   };
 }

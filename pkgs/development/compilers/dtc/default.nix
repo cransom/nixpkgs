@@ -1,7 +1,8 @@
 { stdenv
 , lib
-, fetchgit
-, fetchpatch
+, fetchzip
+, meson
+, ninja
 , flex
 , bison
 , pkg-config
@@ -12,45 +13,59 @@
 , libyaml
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "dtc";
-  version = "1.6.1";
+  version = "1.7.1";
 
-  src = fetchgit {
-    url = "https://git.kernel.org/pub/scm/utils/dtc/dtc.git";
-    rev = "refs/tags/v${version}";
-    sha256 = "sha256-gx9LG3U9etWhPxm7Ox7rOu9X5272qGeHqZtOe68zFs4=";
+  src = fetchzip {
+    url = "https://git.kernel.org/pub/scm/utils/dtc/dtc.git/snapshot/dtc-v${finalAttrs.version}.tar.gz";
+    hash = "sha256-Zl2bOGDJIe/bhMFNsy969JYCYqtXTOzgb+bbOlKqOco=";
   };
 
-  patches = [
-    # fix python 3.10 compatibility
-    # based on without requiring the setup.py rework
-    # https://git.kernel.org/pub/scm/utils/dtc/dtc.git/commit/?id=383e148b70a47ab15f97a19bb999d54f9c3e810f
-    ./python-3.10.patch
+  env.SETUPTOOLS_SCM_PRETEND_VERSION = finalAttrs.version;
 
-    # fix dtc static building
-    ./0001-Depend-on-.a-instead-of-.so-when-building-static.patch
+  nativeBuildInputs = [
+    meson
+    ninja
+    flex
+    bison
+    pkg-config
+    which
+  ] ++ lib.optionals pythonSupport [
+    python
+    python.pkgs.setuptools-scm
+    swig
   ];
-
-  nativeBuildInputs = [ flex bison pkg-config which ]
-    ++ lib.optionals pythonSupport [ python swig ];
 
   buildInputs = [ libyaml ];
 
   postPatch = ''
-    patchShebangs pylibfdt/
+    patchShebangs setup.py
   '';
 
-  makeFlags = [ "PYTHON=python" "STATIC_BUILD=${toString stdenv.hostPlatform.isStatic}" ];
-  installFlags = [ "INSTALL=install" "PREFIX=$(out)" "SETUP_PREFIX=$(out)" ];
+  # Required for installation of Python library and is innocuous otherwise.
+  env.DESTDIR = "/";
 
-  postFixup = lib.optionalString stdenv.isDarwin ''
-    install_name_tool -id $out/lib/libfdt.dylib $out/lib/libfdt-${version}.dylib
-  '';
+  mesonAutoFeatures = "auto";
+  mesonFlags = [
+    (lib.mesonBool "static-build" stdenv.hostPlatform.isStatic)
+    (lib.mesonBool "tests" finalAttrs.finalPackage.doCheck)
+  ];
 
-  # Checks are broken on aarch64 darwin
-  # https://github.com/NixOS/nixpkgs/pull/118700#issuecomment-885892436
-  doCheck = !stdenv.isDarwin;
+  doCheck =
+    # Checks are broken on aarch64 darwin
+    # https://github.com/NixOS/nixpkgs/pull/118700#issuecomment-885892436
+    !stdenv.hostPlatform.isDarwin &&
+    # Checks are broken when building statically on x86_64 linux with musl
+    # One of the test tries to build a shared library and this causes the linker:
+    # x86_64-unknown-linux-musl-ld: /nix/store/h9gcvnp90mpniyx2v0d0p3s06hkx1v2p-x86_64-unknown-linux-musl-gcc-13.3.0/lib/gcc/x86_64-unknown-linux-musl/13.3.0/crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
+    # x86_64-unknown-linux-musl-ld: failed to set dynamic section sizes: bad value
+    !stdenv.hostPlatform.isStatic &&
+
+    # we must explicitly disable this here so that mesonFlags receives
+    # `-Dtests=disabled`; without it meson will attempt to run
+    # hostPlatform binaries during the configurePhase.
+    (with stdenv; buildPlatform.canExecute hostPlatform);
 
   meta = with lib; {
     description = "Device Tree Compiler";
@@ -58,5 +73,6 @@ stdenv.mkDerivation rec {
     license = licenses.gpl2Plus; # dtc itself is GPLv2, libfdt is dual GPL/BSD
     maintainers = [ maintainers.dezgeg ];
     platforms = platforms.unix;
+    mainProgram = "dtc";
   };
-}
+})

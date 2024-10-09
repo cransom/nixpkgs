@@ -11,7 +11,7 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-V9HXXYQIo3zeqZjJEn+dhemNg6AU+ee3FRmBmXgLuYQ=";
   };
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
     "-Wno-error=deprecated-declarations"
   ];
 
@@ -25,7 +25,8 @@ stdenv.mkDerivation rec {
   buildInputs = [ openssl mailcap ];
 
   meta = with lib; {
-    description = "A simple Gemini protocol server";
+    description = "Simple Gemini protocol server";
+    mainProgram = "gmnisrv";
     homepage = "https://git.sr.ht/~sircmpwn/gmnisrv";
     license = licenses.gpl3Only;
     maintainers = with maintainers; [ bsima jb55 ];

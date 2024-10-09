@@ -39,7 +39,7 @@ stdenv.mkDerivation rec {
   ];
 
   # Ensure C/Fortran code is position-independent.
-  NIX_CFLAGS_COMPILE = [ "-fPIC" "-Ofast" ];
+  env.NIX_CFLAGS_COMPILE = toString [ "-fPIC" "-Ofast" ];
   FCFLAGS = [ "-fPIC" "-Ofast" ];
 
   enableParallelBuilding = true;
@@ -83,6 +83,6 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ KarlJoad ];
     platforms = platforms.all;
     # ./rsb_common.h:56:10: fatal error: 'omp.h' file not found
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
   };
 }

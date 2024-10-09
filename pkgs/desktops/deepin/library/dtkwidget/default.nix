@@ -1,30 +1,33 @@
-{ stdenv
-, lib
-, fetchFromGitHub
-, dtkgui
-, pkg-config
-, cmake
-, qttools
-, qtmultimedia
-, qtsvg
-, qtx11extras
-, wrapQtAppsHook
-, cups
-, gsettings-qt
-, libstartup_notification
-, xorg
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  cmake,
+  pkg-config,
+  doxygen,
+  libsForQt5,
+  dtkgui,
+  cups,
+  gsettings-qt,
+  libstartup_notification,
+  xorg,
 }:
 
 stdenv.mkDerivation rec {
   pname = "dtkwidget";
-  version = "5.6.3";
+  version = "5.6.31";
 
   src = fetchFromGitHub {
     owner = "linuxdeepin";
     repo = pname;
     rev = version;
-    sha256 = "sha256-APk2p8pdLsaKvPp95HtEI1F1LM4ySUL+fhGsC5vHasU=";
+    hash = "sha256-FAF66FsmUX0dhFlbT5wAUWkxY0TOU6dcKNwlY10Qou0=";
   };
+
+  patches = [
+    ./fix-pkgconfig-path.patch
+    ./fix-pri-path.patch
+  ];
 
   postPatch = ''
     substituteInPlace src/widgets/dapplication.cpp \
@@ -34,15 +37,17 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     cmake
-    qttools
+    doxygen
     pkg-config
-    wrapQtAppsHook
+    libsForQt5.qttools
+    libsForQt5.wrapQtAppsHook
   ];
 
   buildInputs = [
-    qtmultimedia
-    qtsvg
-    qtx11extras
+    libsForQt5.qtbase
+    libsForQt5.qtmultimedia
+    libsForQt5.qtsvg
+    libsForQt5.qtx11extras
     cups
     gsettings-qt
     libstartup_notification
@@ -52,10 +57,29 @@ stdenv.mkDerivation rec {
   propagatedBuildInputs = [ dtkgui ];
 
   cmakeFlags = [
-    "-DDVERSION=${version}"
-    "-DBUILD_DOCS=OFF"
-    "-DMKSPECS_INSTALL_DIR=${placeholder "out"}/mkspecs/modules"
+    "-DDTK_VERSION=${version}"
+    "-DBUILD_DOCS=ON"
+    "-DMKSPECS_INSTALL_DIR=${placeholder "dev"}/mkspecs/modules"
+    "-DQCH_INSTALL_DESTINATION=${placeholder "doc"}/${libsForQt5.qtbase.qtDocPrefix}"
   ];
+
+  preConfigure = ''
+    # qt.qpa.plugin: Could not find the Qt platform plugin "minimal"
+    # A workaround is to set QT_PLUGIN_PATH explicitly
+    export QT_PLUGIN_PATH=${libsForQt5.qtbase.bin}/${libsForQt5.qtbase.qtPluginPrefix}
+  '';
+
+  outputs = [
+    "out"
+    "dev"
+    "doc"
+  ];
+
+  postFixup = ''
+    for binary in $out/lib/dtk5/DWidget/bin/*; do
+        wrapQtApp $binary
+    done
+  '';
 
   meta = with lib; {
     description = "Deepin graphical user interface library";

@@ -1,19 +1,17 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, pythonOlder
-, flit-core
-, markdown-it-py
-, pytest-regressions
-, pytestCheckHook
-# allow disabling tests for the nixos manual build.
-# the test suite closure is just too large.
-, disableTests ? false
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
+  flit-core,
+  markdown-it-py,
+  pytest-regressions,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "mdit-py-plugins";
-  version = "0.3.3";
+  version = "0.4.1";
   format = "pyproject";
 
   disabled = pythonOlder "3.6";
@@ -22,30 +20,25 @@ buildPythonPackage rec {
     owner = "executablebooks";
     repo = pname;
     rev = "refs/tags/v${version}";
-    hash = "sha256-9eaVM5KxrMY5q0c2KWmctCHyPGmEGGNa9B3LoRL/mcI=";
+    hash = "sha256-xIbP2zHvHWV+2wW17i78vxc5npCvRBYP6QuL/mCBIww=";
   };
 
-  nativeBuildInputs = [
-    flit-core
-  ];
+  nativeBuildInputs = [ flit-core ];
 
-  propagatedBuildInputs = [
-    markdown-it-py
-  ];
+  propagatedBuildInputs = [ markdown-it-py ];
 
-  nativeCheckInputs = lib.optionals (!disableTests) [
+  nativeCheckInputs = [
     pytestCheckHook
     pytest-regressions
   ];
 
-  pythonImportsCheck = [
-    "mdit_py_plugins"
-  ];
+  pythonImportsCheck = [ "mdit_py_plugins" ];
 
   meta = with lib; {
     description = "Collection of core plugins for markdown-it-py";
     homepage = "https://github.com/executablebooks/mdit-py-plugins";
+    changelog = "https://github.com/executablebooks/mdit-py-plugins/blob/v${version}/CHANGELOG.md";
     license = licenses.mit;
-    maintainers = with maintainers; [ AluisioASG ];
+    maintainers = [ ];
   };
 }

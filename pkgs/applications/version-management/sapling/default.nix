@@ -1,22 +1,26 @@
 { lib
 , stdenv
-, python3Packages
+, python311Packages
 , fetchFromGitHub
 , fetchurl
-, sd
+, cargo
 , curl
 , pkg-config
 , openssl
 , rustPlatform
+, rustc
 , fetchYarnDeps
 , yarn
 , nodejs
-, fixup_yarn_lock
+, fixup-yarn-lock
 , glibcLocales
 , libiconv
+, Cocoa
 , CoreFoundation
+, CoreGraphics
 , CoreServices
 , Security
+, WebKit
 
 , enableMinimal ? false
 }:
@@ -36,14 +40,14 @@ let
   #
   # See https://github.com/NixOS/nixpkgs/pull/198311#issuecomment-1326894295
   myCargoSetupHook = rustPlatform.cargoSetupHook.overrideAttrs (old: {
-    cargoConfig = if stdenv.isDarwin then "" else old.cargoConfig;
+    cargoConfig = lib.optionalString (!stdenv.hostPlatform.isDarwin) old.cargoConfig;
   });
 
   src = fetchFromGitHub {
     owner = "facebook";
     repo = "sapling";
     rev = version;
-    hash = "sha256-WOvkw+vuU/9vWgxCx7ogawQWCr1O7E70uw/LhuLiSzE";
+    hash = "sha256-4pOpJ91esTSH90MvvMu74CnlLULLUawqxcniUeqnLwA=";
   };
 
   addonsSrc = "${src}/addons";
@@ -51,7 +55,7 @@ let
   # Fetches the Yarn modules in Nix to to be used as an offline cache
   yarnOfflineCache = fetchYarnDeps {
     yarnLock = "${addonsSrc}/yarn.lock";
-    sha256 = "sha256-haeVRO5JBStrO7fjI9WhC5xZwX0IlZR1wxh0Q+m/UQM";
+    sha256 = "sha256-jCtrflwDrwql6rY1ff1eXLKdwmnXhg5bCJPlCczBCIk=";
   };
 
   # Builds the NodeJS server that runs with `sl web`
@@ -61,7 +65,7 @@ let
     inherit version;
 
     nativeBuildInputs = [
-      fixup_yarn_lock
+      fixup-yarn-lock
       nodejs
       yarn
     ];
@@ -70,10 +74,18 @@ let
       runHook preBuild
 
       export HOME=$(mktemp -d)
-      fixup_yarn_lock yarn.lock
+      fixup-yarn-lock yarn.lock
       yarn config --offline set yarn-offline-mirror ${yarnOfflineCache}
       yarn install --offline --frozen-lockfile --ignore-engines --ignore-scripts --no-progress
       patchShebangs node_modules
+      patchShebangs isl/node_modules
+
+      substituteInPlace build-tar.py \
+        --replace-fail 'run(yarn + ["--cwd", src_join(), "install", "--prefer-offline"])' 'pass'
+
+      ${python311Packages.python}/bin/python3 build-tar.py \
+        --output isl-dist.tar.xz \
+        --yarn 'yarn --offline --frozen-lockfile --ignore-engines --ignore-scripts --no-progress'
 
       runHook postBuild
     '';
@@ -82,35 +94,38 @@ let
       runHook preInstall
 
       mkdir -p $out
-      cd isl
-      node release.js $out
+      install isl-dist.tar.xz $out/isl-dist.tar.xz
 
       runHook postInstall
     '';
   };
 in
 # Builds the main `sl` binary and its Python extensions
-python3Packages.buildPythonApplication {
+python311Packages.buildPythonApplication {
   pname = "sapling";
   inherit src version;
 
-  sourceRoot = "source/eden/scm";
+  sourceRoot = "${src.name}/eden/scm";
 
   # Upstream does not commit Cargo.lock
   cargoDeps = rustPlatform.importCargoLock {
     lockFile = ./Cargo.lock;
     outputHashes = {
       "abomonation-0.7.3+smallvec1" = "sha256-AxEXR6GC8gHjycIPOfoViP7KceM29p2ZISIt4iwJzvM=";
-      "cloned-0.1.0" = "sha256-ZWO3/+O3Oc2Zg99seJ40CInrW1+3rFvL5HjIxhjDW5I=";
-      "deltae-0.3.0" = "sha256-a9Skaqs+tVTw8x83jga+INBr+TdaMmo35Bf2wbfR6zs=";
-      "fb303_core-0.0.0" = "sha256-LEib4QL5sMCUyQ9yGWnsOmO6hmlDaE80nfmrTC8elu0=";
-      "fbthrift-0.0.1+unstable" = "sha256-4SjdZzG6UP8OY7/Qy7ebdKOg1WdZ2USG6wJ7YhA/PxU=";
-      "reqwest-0.11.11" = "sha256-uhc8XhkGW22XDNo0qreWdXeFF2cslOOZHfTRQ30IBcE=";
-      "serde_bser-0.3.1" = "sha256-uW7qXEn0p7m6uo5r+rD3TDH/Lf1cBMWml0TbhysgDH8=";
+      "cloned-0.1.0" = "sha256-2BaNR/pQmR7pHtRf6VBQLcZgLHbj2JCxeX4auAB0efU=";
+      "fb303_core-0.0.0" = "sha256-PDGdKjR6KPv1uH1JSTeoG5Rs0ZkmNJLqqSXtvV3RWic=";
+      "fbthrift-0.0.1+unstable" = "sha256-J4REXGuLjHyN3SHilSWhMoqpRcn1QnEtsTsZF4Z3feU=";
+      "serde_bser-0.4.0" = "sha256-Su1IP3NzQu/87p/+uQaG8JcICL9hit3OV1O9oFiACsQ=";
     };
   };
   postPatch = ''
     cp ${./Cargo.lock} Cargo.lock
+  '' + lib.optionalString (!enableMinimal) ''
+    # If asked, we optionally patch in a hardcoded path to the
+    # 'nodejs' package, so that 'sl web' always works. Without the
+    # patch, 'sl web' will still work if 'nodejs' is in $PATH.
+    substituteInPlace lib/config/loader/src/builtin_static/core.rs \
+      --replace '"#);' $'[web]\nnode-path=${nodejs}/bin/node\n"#);'
   '';
 
   # Since the derivation builder doesn't have network access to remain pure,
@@ -122,26 +137,11 @@ python3Packages.buildPythonApplication {
     sed -i "s|https://files.pythonhosted.org/packages/[[:alnum:]]*/[[:alnum:]]*/[[:alnum:]]*/|file://$NIX_BUILD_TOP/$sourceRoot/hack_pydeps/|g" $sourceRoot/setup.py
   '';
 
-  # Now, copy the "sl web" (aka edenscm-isl) results into the output of this
-  # package, so that the command can actually work. NOTES:
-  #
-  # 1) This applies on all systems (so no conditional a la postFixup)
-  # 2) This doesn't require any kind of fixup itself, so we leave it out
-  #    of postFixup for that reason, too
-  # 3) If asked, we optionally patch in a hardcoded path to the 'nodejs' package,
-  #    so that 'sl web' always works
-  # 4) 'sl web' will still work if 'nodejs' is in $PATH, just not OOTB
-  preFixup = ''
-    sitepackages=$out/lib/${python3Packages.python.libPrefix}/site-packages
-    chmod +w $sitepackages
-    cp -r ${isl} $sitepackages/edenscm-isl
-  '' + lib.optionalString (!enableMinimal) ''
-    chmod +w $sitepackages/edenscm-isl/run-isl
-    substituteInPlace $sitepackages/edenscm-isl/run-isl \
-      --replace 'NODE=node' 'NODE=${nodejs}/bin/node'
+  postInstall = ''
+    install ${isl}/isl-dist.tar.xz $out/lib/isl-dist.tar.xz
   '';
 
-  postFixup = lib.optionalString stdenv.isLinux ''
+  postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
     wrapProgram $out/bin/sl \
       --set LOCALE_ARCHIVE "${glibcLocales}/lib/locale/locale-archive"
   '';
@@ -149,38 +149,48 @@ python3Packages.buildPythonApplication {
   nativeBuildInputs = [
     curl
     pkg-config
-  ] ++ (with rustPlatform; [
     myCargoSetupHook
-    rust.cargo
-    rust.rustc
-  ]);
+    cargo
+    rustc
+  ];
 
   buildInputs = [
     openssl
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     curl
     libiconv
+    Cocoa
     CoreFoundation
+    CoreGraphics
     CoreServices
     Security
+    WebKit
   ];
 
   HGNAME = "sl";
   SAPLING_OSS_BUILD = "true";
-  SAPLING_VERSION = version;
   SAPLING_VERSION_HASH = versionHash;
+
+  # Python setuptools version 66 and newer does not support upstream Sapling's
+  # version numbers (e.g. "0.2.20230124-180750-hf8cd450a"). Change the version
+  # number to something supported by setuptools (e.g. "0.2.20230124").
+  # https://github.com/facebook/sapling/issues/571
+  SAPLING_VERSION = builtins.elemAt (builtins.split "-" version) 0;
 
   # just a simple check phase, until we have a running test suite. this should
   # help catch issues like lack of a LOCALE_ARCHIVE setting (see GH PR #202760)
   doCheck = true;
   installCheckPhase = ''
-    echo -n "testing sapling version; should be \"${version}\"... "
-    $out/bin/sl version | grep -qw "${version}"
+    echo -n "testing sapling version; should be \"$SAPLING_VERSION\"... "
+    $out/bin/sl version | grep -qw "$SAPLING_VERSION"
     echo "OK!"
   '';
 
+  # Expose isl to nix repl as sapling.isl.
+  passthru.isl = isl;
+
   meta = with lib; {
-    description = "A Scalable, User-Friendly Source Control System";
+    description = "Scalable, User-Friendly Source Control System";
     homepage = "https://sapling-scm.com";
     license = licenses.gpl2Only;
     maintainers = with maintainers; [ pbar thoughtpolice ];

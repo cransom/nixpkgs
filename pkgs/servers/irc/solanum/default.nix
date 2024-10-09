@@ -8,6 +8,7 @@
 , pkg-config
 , sqlite
 , util-linux
+, nixosTests
 }:
 
 stdenv.mkDerivation rec {
@@ -37,7 +38,7 @@ stdenv.mkDerivation rec {
     "--localstatedir=/var/lib"
     "--with-rundir=/run"
     "--with-logdir=/var/log"
-  ] ++ lib.optionals (stdenv.isLinux) [
+  ] ++ lib.optionals (stdenv.hostPlatform.isLinux) [
     "--enable-sctp=${lksctp-tools.out}/lib"
   ];
 
@@ -54,12 +55,19 @@ stdenv.mkDerivation rec {
     sqlite
   ];
 
-  doCheck = !stdenv.isDarwin;
+  doCheck = !stdenv.hostPlatform.isDarwin;
 
   enableParallelBuilding = true;
+  # Missing install depends:
+  #   ...-binutils-2.40/bin/ld: cannot find ./.libs/libircd.so: No such file or directory
+  #   collect2: error: ld returned 1 exit status
+  #   make[4]: *** [Makefile:634: solanum] Error 1
+  enableParallelInstalling = false;
+
+  passthru.tests = { inherit (nixosTests) solanum; };
 
   meta = with lib; {
-    description = "An IRCd for unified networks";
+    description = "IRCd for unified networks";
     homepage = "https://github.com/solanum-ircd/solanum";
     license = licenses.gpl2Plus;
     maintainers = with maintainers; [ hexa ];

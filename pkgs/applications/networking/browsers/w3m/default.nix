@@ -1,10 +1,11 @@
 { lib, stdenv, fetchFromGitHub, fetchpatch
 , ncurses, boehmgc, gettext, zlib
 , sslSupport ? true, openssl
-, graphicsSupport ? !stdenv.isDarwin, imlib2
+, graphicsSupport ? !stdenv.hostPlatform.isDarwin, imlib2
 , x11Support ? graphicsSupport, libX11
-, mouseSupport ? !stdenv.isDarwin, gpm-ncurses
+, mouseSupport ? !stdenv.hostPlatform.isDarwin, gpm-ncurses
 , perl, man, pkg-config, buildPackages, w3m
+, testers, updateAutotoolsGnuConfigScriptsHook
 }:
 
 let
@@ -19,16 +20,16 @@ let
   };
 in stdenv.mkDerivation rec {
   pname = "w3m";
-  version = "0.5.3+git20220429";
+  version = "0.5.3+git20230121";
 
   src = fetchFromGitHub {
     owner = "tats";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-aPPLZjjL3A5Tk0hv0NoAwJnjemC7a5RUoubhUr3lQE4=";
+    hash = "sha256-upb5lWqhC1jRegzTncIz5e21v4Pw912FyVn217HucFs=";
   };
 
-  NIX_LDFLAGS = lib.optionalString stdenv.isSunOS "-lsocket -lnsl";
+  NIX_LDFLAGS = lib.optionalString stdenv.hostPlatform.isSunOS "-lsocket -lnsl";
 
   # we must set these so that the generated files (e.g. w3mhelp.cgi) contain
   # the correct paths.
@@ -52,7 +53,9 @@ in stdenv.mkDerivation rec {
     sed -ie 's!mktable.*:.*!mktable:!' Makefile.in
   '';
 
-  nativeBuildInputs = [ pkg-config gettext ];
+  # updateAutotoolsGnuConfigScriptsHook necessary to build on FreeBSD native pending inclusion of
+  # https://git.savannah.gnu.org/cgit/config.git/commit/?id=e4786449e1c26716e3f9ea182caf472e4dbc96e0
+  nativeBuildInputs = [ pkg-config gettext updateAutotoolsGnuConfigScriptsHook ];
   buildInputs = [ ncurses boehmgc zlib ]
     ++ lib.optional sslSupport openssl
     ++ lib.optional mouseSupport gpm-ncurses
@@ -84,11 +87,19 @@ in stdenv.mkDerivation rec {
   # see: https://bbs.archlinux.org/viewtopic.php?id=196093
   LIBS = lib.optionalString x11Support "-lX11";
 
+  passthru.tests.version = testers.testVersion {
+    inherit version;
+    package = w3m;
+    command = "w3m -version";
+  };
+
   meta = with lib; {
     homepage = "https://w3m.sourceforge.net/";
-    description = "A text-mode web browser";
-    maintainers = with maintainers; [ cstrahan anthonyroussel ];
+    changelog = "https://github.com/tats/w3m/blob/v${version}/ChangeLog";
+    description = "Text-mode web browser";
+    maintainers = with maintainers; [ anthonyroussel ];
     platforms = platforms.unix;
     license = licenses.mit;
+    mainProgram = "w3m";
   };
 }

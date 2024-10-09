@@ -2,13 +2,13 @@
 
 stdenv.mkDerivation rec {
   pname = "fuse-overlayfs";
-  version = "1.10";
+  version = "1.14";
 
   src = fetchFromGitHub {
     owner = "containers";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-l48VZ+CNw2O66A2kcxvnyDafsXdYfBCZdFK3bMHPsCA=";
+    hash = "sha256-A70AxYPKph/5zRNFRDWrwl8Csc8Vf1gmOLJ39ixJgL0=";
   };
 
   nativeBuildInputs = [ autoreconfHook pkg-config ];
@@ -27,5 +27,6 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ ma9e ] ++ teams.podman.members;
     platforms = platforms.linux;
     inherit (src.meta) homepage;
+    mainProgram = "fuse-overlayfs";
   };
 }

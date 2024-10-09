@@ -1,12 +1,12 @@
-{ lib, fetchurl, appimageTools, imagemagick }:
+{ lib, fetchurl, appimageTools, makeWrapper, imagemagick }:
 
 let
   pname = "ledger-live-desktop";
-  version = "2.53.2";
+  version = "2.84.1";
 
   src = fetchurl {
     url = "https://download.live.ledger.com/${pname}-${version}-linux-x86_64.AppImage";
-    hash = "sha256-RGeJWUMZagXM/8SHHOpTpcnsz+BShnGp2yvt31qo5lI=";
+    hash = "sha256-V/bOCddc7UhmN8zlHmKj+H4v+ZZ/qn8jRj0jH4EtwMI=";
   };
 
   appimageContents = appimageTools.extractType2 {
@@ -16,21 +16,28 @@ in
 appimageTools.wrapType2 rec {
   inherit pname version src;
 
+  nativeBuildInputs = [ makeWrapper ];
+
   extraInstallCommands = ''
-    mv $out/bin/${pname}-${version} $out/bin/${pname}
     install -m 444 -D ${appimageContents}/ledger-live-desktop.desktop $out/share/applications/ledger-live-desktop.desktop
     install -m 444 -D ${appimageContents}/ledger-live-desktop.png $out/share/icons/hicolor/1024x1024/apps/ledger-live-desktop.png
     ${imagemagick}/bin/convert ${appimageContents}/ledger-live-desktop.png -resize 512x512 ledger-live-desktop_512.png
     install -m 444 -D ledger-live-desktop_512.png $out/share/icons/hicolor/512x512/apps/ledger-live-desktop.png
+
+    wrapProgram "$out/bin/${pname}" \
+       --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform=wayland --enable-features=WaylandWindowDecorations --enable-wayland-ime}}"
+
     substituteInPlace $out/share/applications/ledger-live-desktop.desktop \
       --replace 'Exec=AppRun' 'Exec=${pname}'
   '';
 
   meta = with lib; {
-    description = "Wallet app for Ledger Nano S and Ledger Blue";
-    homepage = "https://www.ledger.com/live";
+    description = "App for Ledger hardware wallets";
+    homepage = "https://www.ledger.com/ledger-live/";
     license = licenses.mit;
-    maintainers = with maintainers; [ andresilva thedavidmeister nyanloutre RaghavSood th0rgal WeebSorceress ];
+    maintainers = with maintainers; [ andresilva thedavidmeister nyanloutre RaghavSood th0rgal ];
     platforms = [ "x86_64-linux" ];
+    mainProgram = "ledger-live-desktop";
+    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
   };
 }

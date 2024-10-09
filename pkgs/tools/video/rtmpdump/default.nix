@@ -37,7 +37,7 @@ stdenv.mkDerivation {
   ]
     ++ lib.optional gnutlsSupport "CRYPTO=GNUTLS"
     ++ lib.optional opensslSupport "CRYPTO=OPENSSL"
-    ++ lib.optional stdenv.isDarwin "SYS=darwin"
+    ++ lib.optional stdenv.hostPlatform.isDarwin "SYS=darwin"
     ++ lib.optional stdenv.cc.isClang "CC=clang";
 
   propagatedBuildInputs = [ zlib ]
@@ -51,7 +51,7 @@ stdenv.mkDerivation {
   meta = with lib; {
     description = "Toolkit for RTMP streams";
     homepage = "https://rtmpdump.mplayerhq.hu/";
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     platforms = platforms.unix;
     maintainers = with maintainers; [ codyopel ];
   };

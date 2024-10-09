@@ -1,22 +1,49 @@
-{ buildPythonPackage, django, fetchPypi, lib, typing-extensions }:
+{
+  lib,
+  buildPythonPackage,
+  django,
+  fetchPypi,
+  oracledb,
+  pytestCheckHook,
+  pythonOlder,
+  redis,
+  setuptools,
+  typing-extensions,
+}:
 
 buildPythonPackage rec {
   pname = "django-stubs-ext";
-  version = "0.7.0";
+  version = "5.1.0";
+  pyproject = true;
+
+  disabled = pythonOlder "3.8";
 
   src = fetchPypi {
-    inherit pname version;
-    sha256 = "sha256-T9jNvGjRpCHyG7fg2edtUPaktQTTULp4ZAXa9TbpDCE=";
+    pname = "django_stubs_ext";
+    inherit version;
+    hash = "sha256-7X1RwLcxZRh5/HXzMfsIBtmLZ7+rRk6W4nJNtrRu+SY=";
   };
 
-  # setup.cfg tries to pull in nonexistent LICENSE.txt file
-  postPatch = "rm setup.cfg";
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [ django typing-extensions ];
+  dependencies = [
+    django
+    typing-extensions
+  ];
+
+  optional-dependencies = {
+    redis = [ redis ];
+    oracle = [ oracledb ];
+  };
+
+  nativeCheckInputs = [ pytestCheckHook ];
+
+  pythonImportsCheck = [ "django_stubs_ext" ];
 
   meta = with lib; {
     description = "Extensions and monkey-patching for django-stubs";
     homepage = "https://github.com/typeddjango/django-stubs";
+    changelog = "https://github.com/typeddjango/django-stubs/releases/tag/${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ elohmeier ];
   };

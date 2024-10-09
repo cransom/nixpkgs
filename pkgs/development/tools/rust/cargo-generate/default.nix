@@ -11,27 +11,27 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "cargo-generate";
-  version = "0.17.6";
+  version = "0.21.3";
 
   src = fetchFromGitHub {
     owner = "cargo-generate";
     repo = "cargo-generate";
     rev = "v${version}";
-    sha256 = "sha256-SDcJmEh4DBxe6icKom559B8tkvl0dbXUeACwH69PZRM=";
+    sha256 = "sha256-1F/865UgdqwfpITFhXCuL7CmducL7w0lVDyfui9UzjU=";
   };
 
-  # patch Cargo.toml to not vendor libgit2 and openssl
-  cargoPatches = [ ./no-vendor.patch ];
-
-  cargoSha256 = "sha256-wbovccAWeAPa8xbVhM2TGiLcqQYGBvGnS5/05672QKU=";
+  cargoHash = "sha256-szPO1V09EThpo2N03Ll+ZJUpvjp2b+/C/sviOzFfG+k=";
 
   nativeBuildInputs = [ pkg-config ];
 
-  buildInputs = [ libgit2 openssl ] ++ lib.optionals stdenv.isDarwin [
+  buildInputs = [ libgit2 openssl ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     darwin.apple_sdk.frameworks.Security
   ];
 
   nativeCheckInputs = [ git ];
+
+  # disable vendored libgit2 and openssl
+  buildNoDefaultFeatures = true;
 
   preCheck = ''
     export HOME=$(mktemp -d) USER=nixbld
@@ -44,15 +44,20 @@ rustPlatform.buildRustPackage rec {
   # - should_canonicalize: the test assumes that it will be called from the /Users/<project_dir>/ folder on darwin variant.
   checkFlags = [
     "--skip=favorites::favorites_default_to_git_if_not_defined"
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "--skip=git::utils::should_canonicalize"
   ];
 
+  env = {
+    LIBGIT2_NO_VENDOR = 1;
+  };
+
   meta = with lib; {
-    description = "A tool to generaet a new Rust project by leveraging a pre-existing git repository as a template";
+    description = "Tool to generate a new Rust project by leveraging a pre-existing git repository as a template";
+    mainProgram = "cargo-generate";
     homepage = "https://github.com/cargo-generate/cargo-generate";
     changelog = "https://github.com/cargo-generate/cargo-generate/blob/v${version}/CHANGELOG.md";
     license = with licenses; [ asl20 /* or */ mit ];
-    maintainers = with maintainers; [ figsoda turbomack ];
+    maintainers = with maintainers; [ figsoda turbomack matthiasbeyer ];
   };
 }

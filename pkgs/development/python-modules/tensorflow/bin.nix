@@ -1,65 +1,76 @@
-{ stdenv
-, lib
-, fetchurl
-, buildPythonPackage
-, isPy3k, pythonOlder, pythonAtLeast, astor
-, gast
-, google-pasta
-, wrapt
-, numpy
-, six
-, termcolor
-, packaging
-, protobuf
-, absl-py
-, grpcio
-, mock
-, scipy
-, wheel
-, opt-einsum
-, backports_weakref
-, tensorflow-estimator-bin
-, tensorboard
-, cudaSupport ? false
-, cudaPackages ? {}
-, patchelfUnstable
-, zlib
-, python
-, keras-applications
-, keras-preprocessing
-, addOpenGLRunpath
-, astunparse
-, flatbuffers
-, h5py
-, typing-extensions
+{
+  stdenv,
+  lib,
+  fetchurl,
+  buildPythonPackage,
+  isPy3k,
+  astor,
+  gast,
+  google-pasta,
+  wrapt,
+  numpy,
+  six,
+  termcolor,
+  packaging,
+  protobuf,
+  absl-py,
+  grpcio,
+  mock,
+  scipy,
+  distutils,
+  wheel,
+  jax,
+  ml-dtypes,
+  opt-einsum,
+  tensorflow-estimator-bin,
+  tensorboard,
+  config,
+  cudaSupport ? config.cudaSupport,
+  cudaPackages,
+  zlib,
+  python,
+  keras-applications,
+  keras-preprocessing,
+  addDriverRunpath,
+  astunparse,
+  flatbuffers,
+  h5py,
+  llvmPackages,
+  typing-extensions,
 }:
 
-# We keep this binary build for two reasons:
+# We keep this binary build for three reasons:
 # - the source build doesn't work on Darwin.
 # - the source build is currently brittle and not easy to maintain
+# - the source build doesn't work on NVIDIA Jetson platforms
 
 # unsupported combination
-assert ! (stdenv.isDarwin && cudaSupport);
+assert !(stdenv.hostPlatform.isDarwin && cudaSupport);
 
 let
   packages = import ./binary-hashes.nix;
   inherit (cudaPackages) cudatoolkit cudnn;
-in buildPythonPackage {
+
+  isCudaJetson = cudaSupport && cudaPackages.cudaFlags.isJetsonBuild;
+  isCudaX64 = cudaSupport && stdenv.hostPlatform.isx86_64;
+in
+buildPythonPackage {
   pname = "tensorflow" + lib.optionalString cudaSupport "-gpu";
-  inherit (packages) version;
+  version = packages."${"version" + lib.optionalString isCudaJetson "_jetson"}";
   format = "wheel";
 
-  # Python 3.11 still unsupported
-  disabled = pythonAtLeast "3.11";
+  src =
+    let
+      pyVerNoDot = lib.strings.stringAsChars (x: lib.optionalString (x != ".") x) python.pythonVersion;
+      platform = stdenv.system;
+      cuda = lib.optionalString cudaSupport (if isCudaJetson then "_jetson" else "_gpu");
+      key = "${platform}_${pyVerNoDot}${cuda}";
+    in
+    fetchurl (packages.${key} or (throw "tensoflow-bin: unsupported configuration: ${key}"));
 
-  src = let
-    pyVerNoDot = lib.strings.stringAsChars (x: if x == "." then "" else x) python.pythonVersion;
-    platform = if stdenv.isDarwin then "mac" else "linux";
-    unit = if cudaSupport then "gpu" else "cpu";
-    key = "${platform}_py_${pyVerNoDot}_${unit}";
-  in fetchurl packages.${key};
+  buildInputs = [ llvmPackages.openmp ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     astunparse
     flatbuffers
     typing-extensions
@@ -67,6 +78,7 @@ in buildPythonPackage {
     protobuf
     numpy
     scipy
+    (if isCudaX64 then jax else ml-dtypes)
     termcolor
     grpcio
     six
@@ -81,11 +93,15 @@ in buildPythonPackage {
     keras-applications
     keras-preprocessing
     h5py
-  ] ++ lib.optional (!isPy3k) mock
-    ++ lib.optionals (pythonOlder "3.4") [ backports_weakref ];
+  ] ++ lib.optional (!isPy3k) mock;
 
-  # remove patchelfUnstable once patchelf 0.14 with https://github.com/NixOS/patchelf/pull/256 becomes the default
-  nativeBuildInputs = [ wheel ] ++ lib.optionals cudaSupport [ addOpenGLRunpath patchelfUnstable ];
+  build-system =
+    [
+      distutils
+      wheel
+    ]
+    ++ lib.optionals cudaSupport [ addDriverRunpath ]
+    ++ lib.optionals isCudaJetson [ cudaPackages.autoAddCudaCompatRunpath ];
 
   preConfigure = ''
     unset SOURCE_DATE_EPOCH
@@ -95,7 +111,11 @@ in buildPythonPackage {
 
     pushd dist
 
-    orig_name="$(echo ./*.whl)"
+    for f in tensorflow-*+nv*.whl; do
+      # e.g. *nv24.07* -> *nv24.7*
+      mv "$f" "$(sed -E 's/(nv[0-9]+)\.0*([0-9]+)/\1.\2/' <<< "$f")"
+    done
+
     wheel unpack --dest unpacked ./*.whl
     rm ./*.whl
     (
@@ -104,6 +124,7 @@ in buildPythonPackage {
       # - Relax flatbuffers, gast, protobuf, tensorboard, and tensorflow-estimator version requirements that don't match what we have packaged
       # - The purpose of python3Packages.libclang is not clear at the moment and we don't have it packaged yet
       # - keras and tensorlow-io-gcs-filesystem will be considered as optional for now.
+      # - numpy was pinned to fix some internal tests: https://github.com/tensorflow/tensorflow/issues/60216
       sed -i *.dist-info/METADATA \
         -e "/Requires-Dist: flatbuffers/d" \
         -e "/Requires-Dist: gast/d" \
@@ -112,10 +133,10 @@ in buildPythonPackage {
         -e "/Requires-Dist: protobuf/d" \
         -e "/Requires-Dist: tensorboard/d" \
         -e "/Requires-Dist: tensorflow-estimator/d" \
-        -e "/Requires-Dist: tensorflow-io-gcs-filesystem/d"
+        -e "/Requires-Dist: tensorflow-io-gcs-filesystem/d" \
+        -e "s/Requires-Dist: numpy (.*)/Requires-Dist: numpy/"
     )
     wheel pack ./unpacked/tensorflow*
-    mv *.whl $orig_name # avoid changes to the _os_arch.whl suffix
 
     popd
   '';
@@ -139,7 +160,7 @@ in buildPythonPackage {
 
       rpath = lib.makeLibraryPath (libpaths ++ cudapaths);
     in
-    lib.optionalString stdenv.isLinux ''
+    lib.optionalString stdenv.hostPlatform.isLinux ''
       # This is an array containing all the directories in the tensorflow2
       # package that contain .so files.
       #
@@ -148,17 +169,29 @@ in buildPythonPackage {
       rrPathArr=(
         "$out/${python.sitePackages}/tensorflow/"
         "$out/${python.sitePackages}/tensorflow/core/kernels"
+        "$out/${python.sitePackages}/tensorflow/compiler/mlir/stablehlo/"
         "$out/${python.sitePackages}/tensorflow/compiler/tf2tensorrt/"
         "$out/${python.sitePackages}/tensorflow/compiler/tf2xla/ops/"
+        "$out/${python.sitePackages}/tensorflow/include/external/ml_dtypes/"
         "$out/${python.sitePackages}/tensorflow/lite/experimental/microfrontend/python/ops/"
+        "$out/${python.sitePackages}/tensorflow/lite/python/analyzer_wrapper/"
         "$out/${python.sitePackages}/tensorflow/lite/python/interpreter_wrapper/"
+        "$out/${python.sitePackages}/tensorflow/lite/python/metrics/"
         "$out/${python.sitePackages}/tensorflow/lite/python/optimize/"
         "$out/${python.sitePackages}/tensorflow/python/"
-        "$out/${python.sitePackages}/tensorflow/python/framework/"
         "$out/${python.sitePackages}/tensorflow/python/autograph/impl/testing"
+        "$out/${python.sitePackages}/tensorflow/python/client"
         "$out/${python.sitePackages}/tensorflow/python/data/experimental/service"
         "$out/${python.sitePackages}/tensorflow/python/framework"
+        "$out/${python.sitePackages}/tensorflow/python/grappler"
+        "$out/${python.sitePackages}/tensorflow/python/lib/core"
+        "$out/${python.sitePackages}/tensorflow/python/lib/io"
+        "$out/${python.sitePackages}/tensorflow/python/platform"
         "$out/${python.sitePackages}/tensorflow/python/profiler/internal"
+        "$out/${python.sitePackages}/tensorflow/python/saved_model"
+        "$out/${python.sitePackages}/tensorflow/python/util"
+        "$out/${python.sitePackages}/tensorflow/tsl/python/lib/core"
+        "$out/${python.sitePackages}/tensorflow.libs/"
         "${rpath}"
       )
 
@@ -171,7 +204,7 @@ in buildPythonPackage {
         chmod a+rx "$lib"
         patchelf --set-rpath "$rrPath" "$lib"
         ${lib.optionalString cudaSupport ''
-          addOpenGLRunpath "$lib"
+          addDriverRunpath "$lib"
         ''}
       done
     '';
@@ -190,16 +223,15 @@ in buildPythonPackage {
     "tensorflow.python.framework"
   ];
 
-  passthru = {
-    inherit cudaPackages;
-  };
-
-  meta = with lib; {
+  meta = {
     description = "Computation using data flow graphs for scalable machine learning";
     homepage = "http://tensorflow.org";
-    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
-    license = licenses.asl20;
-    maintainers = with maintainers; [ jyp abbradar cdepillabout ];
-    platforms = [ "x86_64-linux" "x86_64-darwin" ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [
+      jyp
+      abbradar
+    ];
+    badPlatforms = [ "x86_64-darwin" ];
   };
 }

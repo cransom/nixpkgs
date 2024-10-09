@@ -11,6 +11,7 @@
 , freetype
 , alsa-lib
 , libjack2
+, Accelerate
 , Cocoa
 , WebKit
 , MetalKit
@@ -28,12 +29,11 @@ stdenv.mkDerivation rec {
     repo = "dexed";
     rev = "2c036316bcd512818aa9cc8129767ad9e0ec7132";
     fetchSubmodules = true;
-    sha256 = "sha256-6buvA72YRlGjHWLPEZMr45lYYG6ZY+IWmylcHruX27g=";
+    hash = "sha256-6buvA72YRlGjHWLPEZMr45lYYG6ZY+IWmylcHruX27g=";
   };
 
   postPatch = ''
     # needs special setup on Linux, dunno if it can work on Darwin
-    # https://github.com/NixOS/nixpkgs/issues/19098
     sed -i -e '/juce::juce_recommended_lto_flags/d' Source/CMakeLists.txt
   '';
 
@@ -52,6 +52,7 @@ stdenv.mkDerivation rec {
     alsa-lib
     libjack2
   ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    Accelerate
     Cocoa
     WebKit
     MetalKit

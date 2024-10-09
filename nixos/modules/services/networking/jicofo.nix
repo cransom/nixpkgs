@@ -1,89 +1,102 @@
 { config, lib, pkgs, ... }:
-
-with lib;
-
 let
   cfg = config.services.jicofo;
+
+  format = pkgs.formats.hocon { };
+
+  configFile = format.generate "jicofo.conf" cfg.config;
 in
 {
-  options.services.jicofo = with types; {
-    enable = mkEnableOption (lib.mdDoc "Jitsi Conference Focus - component of Jitsi Meet");
+  options.services.jicofo = with lib.types; {
+    enable = lib.mkEnableOption "Jitsi Conference Focus - component of Jitsi Meet";
 
-    xmppHost = mkOption {
+    xmppHost = lib.mkOption {
       type = str;
       example = "localhost";
-      description = lib.mdDoc ''
+      description = ''
         Hostname of the XMPP server to connect to.
       '';
     };
 
-    xmppDomain = mkOption {
+    xmppDomain = lib.mkOption {
       type = nullOr str;
       example = "meet.example.org";
-      description = lib.mdDoc ''
+      description = ''
         Domain name of the XMMP server to which to connect as a component.
 
         If null, {option}`xmppHost` is used.
       '';
     };
 
-    componentPasswordFile = mkOption {
+    componentPasswordFile = lib.mkOption {
       type = str;
       example = "/run/keys/jicofo-component";
-      description = lib.mdDoc ''
+      description = ''
         Path to file containing component secret.
       '';
     };
 
-    userName = mkOption {
+    userName = lib.mkOption {
       type = str;
       default = "focus";
-      description = lib.mdDoc ''
+      description = ''
         User part of the JID for XMPP user connection.
       '';
     };
 
-    userDomain = mkOption {
+    userDomain = lib.mkOption {
       type = str;
       example = "auth.meet.example.org";
-      description = lib.mdDoc ''
+      description = ''
         Domain part of the JID for XMPP user connection.
       '';
     };
 
-    userPasswordFile = mkOption {
+    userPasswordFile = lib.mkOption {
       type = str;
       example = "/run/keys/jicofo-user";
-      description = lib.mdDoc ''
+      description = ''
         Path to file containing password for XMPP user connection.
       '';
     };
 
-    bridgeMuc = mkOption {
+    bridgeMuc = lib.mkOption {
       type = str;
       example = "jvbbrewery@internal.meet.example.org";
-      description = lib.mdDoc ''
+      description = ''
         JID of the internal MUC used to communicate with Videobridges.
       '';
     };
 
-    config = mkOption {
-      type = attrsOf str;
+    config = lib.mkOption {
+      type = format.type;
       default = { };
-      example = literalExpression ''
+      example = lib.literalExpression ''
         {
-          "org.jitsi.jicofo.auth.URL" = "XMPP:jitsi-meet.example.com";
+          jicofo.bridge.max-bridge-participants = 42;
         }
       '';
-      description = lib.mdDoc ''
-        Contents of the {file}`sip-communicator.properties` configuration file for jicofo.
+      description = ''
+        Contents of the {file}`jicofo.conf` configuration file.
       '';
     };
   };
 
-  config = mkIf cfg.enable {
-    services.jicofo.config = mapAttrs (_: v: mkDefault v) {
-      "org.jitsi.jicofo.BRIDGE_MUC" = cfg.bridgeMuc;
+  config = lib.mkIf cfg.enable {
+    services.jicofo.config = {
+      jicofo = {
+        bridge.brewery-jid = cfg.bridgeMuc;
+        xmpp = rec {
+          client = {
+            hostname = cfg.xmppHost;
+            username = cfg.userName;
+            domain = cfg.userDomain;
+            password = format.lib.mkSubstitution "JICOFO_AUTH_PASS";
+            xmpp-domain = if cfg.xmppDomain == null then cfg.xmppHost else cfg.xmppDomain;
+          };
+          service = client;
+        };
+      };
     };
 
     users.groups.jitsi-meet = {};
@@ -93,6 +106,7 @@ in
         "-Dnet.java.sip.communicator.SC_HOME_DIR_LOCATION" = "/etc/jitsi";
         "-Dnet.java.sip.communicator.SC_HOME_DIR_NAME" = "jicofo";
         "-Djava.util.logging.config.file" = "/etc/jitsi/jicofo/logging.properties";
+        "-Dconfig.file" = configFile;
       };
     in
     {
@@ -101,18 +115,13 @@ in
       after = [ "network.target" ];
 
       restartTriggers = [
-        config.environment.etc."jitsi/jicofo/sip-communicator.properties".source
+        configFile
       ];
-      environment.JAVA_SYS_PROPS = concatStringsSep " " (mapAttrsToList (k: v: "${k}=${toString v}") jicofoProps);
+      environment.JAVA_SYS_PROPS = lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "${k}=${toString v}") jicofoProps);
 
       script = ''
-        ${pkgs.jicofo}/bin/jicofo \
-          --host=${cfg.xmppHost} \
-          --domain=${if cfg.xmppDomain == null then cfg.xmppHost else cfg.xmppDomain} \
-          --secret=$(cat ${cfg.componentPasswordFile}) \
-          --user_name=${cfg.userName} \
-          --user_domain=${cfg.userDomain} \
-          --user_password=$(cat ${cfg.userPasswordFile})
+        export JICOFO_AUTH_PASS="$(<${cfg.userPasswordFile})"
+        exec "${pkgs.jicofo}/bin/jicofo"
       '';
 
       serviceConfig = {
@@ -140,12 +149,9 @@ in
       };
     };
 
-    environment.etc."jitsi/jicofo/sip-communicator.properties".source =
-      pkgs.writeText "sip-communicator.properties" (
-        generators.toKeyValue {} cfg.config
-      );
+    environment.etc."jitsi/jicofo/sip-communicator.properties".text = "";
     environment.etc."jitsi/jicofo/logging.properties".source =
-      mkDefault "${pkgs.jicofo}/etc/jitsi/jicofo/logging.properties-journal";
+      lib.mkDefault "${pkgs.jicofo}/etc/jitsi/jicofo/logging.properties-journal";
   };
 
   meta.maintainers = lib.teams.jitsi.members;

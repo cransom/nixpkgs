@@ -1,40 +1,55 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, lxml
-, pytestCheckHook
+{
+  lib,
+  buildPythonPackage,
+  pythonOlder,
+  fetchFromGitHub,
+  poetry-core,
+  inkex,
+  lxml,
+  pytestCheckHook,
 }:
 
-buildPythonPackage {
+buildPythonPackage rec {
   pname = "svg2tikz";
-  version = "unstable-2021-01-12";
+  version = "3.2.0";
 
-  format = "setuptools";
+  disabled = pythonOlder "3.7";
+
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "xyz2tex";
     repo = "svg2tikz";
-    rev = "7a9959c295e1ed73e543474c6f3679d04cebc9e9";
-    hash = "sha256-OLMFtEEdcY8ARI+hUSOhMwwcrtOAsbKRJRdDJcuaIBg=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-5SOUvrK83ff1x4MTVoJy68OaDmZUfrEwraEWmPMJKTA=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [
+    poetry-core
+  ];
+
+  dependencies = [
+    inkex
     lxml
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
+  pythonRelaxDeps = [
+    "lxml"
   ];
 
-  # upstream hasn't updated the tests in a while
-  doCheck = false;
+
+  nativeCheckInputs = [ pytestCheckHook ];
 
   pythonImportsCheck = [ "svg2tikz" ];
 
   meta = with lib; {
+    changelog = "https://github.com/xyz2tex/svg2tikz/blob/${src.rev}/CHANGELOG.md";
     homepage = "https://github.com/xyz2tex/svg2tikz";
     description = "Set of tools for converting SVG graphics to TikZ/PGF code";
     license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ dotlambda gal_bolle ];
+    maintainers = with maintainers; [
+      dotlambda
+      gal_bolle
+    ];
   };
 }

@@ -1,97 +1,109 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, aiohttp
-, matplotlib
-, numpy
-, openpyxl
-, pandas
-, pandas-stubs
-, plotly
-, pytest-asyncio
-, pytest-mock
-, pytestCheckHook
-, pythonOlder
-, requests
-, scikit-learn
-, tenacity
-, tqdm
-, typing-extensions
-, wandb
-, withOptionalDependencies ? false
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
+
+  # build-system
+  hatchling,
+  hatch-fancy-pypi-readme,
+
+  # dependencies
+  anyio,
+  cached-property,
+  distro,
+  httpx,
+  jiter,
+  pydantic,
+  sniffio,
+  tqdm,
+  typing-extensions,
+
+  numpy,
+  pandas,
+  pandas-stubs,
+
+  # check deps
+  pytestCheckHook,
+  dirty-equals,
+  inline-snapshot,
+  pytest-asyncio,
+  pytest-mock,
+  respx,
+
 }:
 
 buildPythonPackage rec {
   pname = "openai";
-  version = "0.26.5";
-  format = "setuptools";
+  version = "1.51.0";
+  pyproject = true;
 
   disabled = pythonOlder "3.7.1";
 
   src = fetchFromGitHub {
     owner = "openai";
     repo = "openai-python";
-    rev = "v${version}";
-    hash = "sha256-eKU+WRFf7f1yH63vcoQ9dVeqhJXBqMJGpk/9AoEgR0M=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-VwsW7wVNSVlZg+RJoQ3C9AuqHL5dFO+f9pyfUbRbrSM=";
   };
 
-  propagatedBuildInputs = [
-    aiohttp
-    requests
-    tqdm
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    typing-extensions
-  ] ++ lib.optionals withOptionalDependencies (builtins.attrValues {
-    inherit (passthru.optional-dependencies) embeddings wandb;
-  });
+  build-system = [
+    hatchling
+    hatch-fancy-pypi-readme
+  ];
 
-  passthru.optional-dependencies = {
+  dependencies = [
+    anyio
+    distro
+    httpx
+    jiter
+    pydantic
+    sniffio
+    tqdm
+    typing-extensions
+  ] ++ lib.optionals (pythonOlder "3.8") [ cached-property ];
+
+  optional-dependencies = {
     datalib = [
       numpy
-      openpyxl
       pandas
       pandas-stubs
     ];
-    embeddings = [
-      matplotlib
-      plotly
-      scikit-learn
-      tenacity
-    ] ++ passthru.optional-dependencies.datalib;
-    wandb = [
-      wandb
-    ] ++ passthru.optional-dependencies.datalib;
   };
 
-  pythonImportsCheck = [
-    "openai"
-  ];
+  pythonImportsCheck = [ "openai" ];
 
   nativeCheckInputs = [
     pytestCheckHook
+    dirty-equals
+    inline-snapshot
     pytest-asyncio
     pytest-mock
+    respx
   ];
 
   pytestFlagsArray = [
-    "openai/tests"
+    "-W"
+    "ignore::DeprecationWarning"
   ];
 
-  OPENAI_API_KEY = "sk-foo";
+  disabledTests = [
+    # Tests make network requests
+    "test_copy_build_request"
+    "test_basic_attribute_access_works"
+  ];
 
   disabledTestPaths = [
-    # Requires a real API key
-    "openai/tests/test_endpoints.py"
-    "openai/tests/asyncio/test_endpoints.py"
-    # openai: command not found
-    "openai/tests/test_file_cli.py"
-    "openai/tests/test_long_examples_validator.py"
+    # Test makes network requests
+    "tests/api_resources"
   ];
 
   meta = with lib; {
     description = "Python client library for the OpenAI API";
     homepage = "https://github.com/openai/openai-python";
+    changelog = "https://github.com/openai/openai-python/releases/tag/v${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ malo ];
+    mainProgram = "openai";
   };
 }

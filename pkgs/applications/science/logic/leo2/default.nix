@@ -31,6 +31,8 @@ stdenv.mkDerivation rec {
 
   buildFlags = [ "opt" ];
 
+  env.NIX_CFLAGS_COMPILE = lib.optionalString stdenv.cc.isClang "-Wno-reserved-user-defined-literal";
+
   preInstall = "mkdir -p $out/bin";
 
   postInstall = ''
@@ -42,9 +44,10 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "A high-performance typed higher order prover";
+    description = "High-performance typed higher order prover";
+    mainProgram = "leo";
     maintainers = [ maintainers.raskin ];
-    platforms = platforms.linux;
+    platforms = platforms.unix;
     license = licenses.bsd3;
     homepage = "http://www.leoprover.org/";
   };

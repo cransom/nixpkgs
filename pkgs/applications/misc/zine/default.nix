@@ -4,33 +4,36 @@
 , pkg-config
 , openssl
 , stdenv
-, CoreServices
-, Security
+, darwin
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "zine";
-  version = "0.10.1";
+  version = "0.16.0";
 
   src = fetchCrate {
     inherit pname version;
-    sha256 = "sha256-3xFJ7v/IZQ3yfU0D09sFXV+4XKRau+Mj3BNxkeUjbbU=";
+    hash = "sha256-pUoMMgZQ+oDs9Yhc1rQuy9cUWiR800DlIe8wxQjnIis=";
   };
 
-  cargoHash = "sha256-3Sw/USfGJuf6JGSR3Xkjnmm/UR7NK8rB8St48b4WpIM=";
+  cargoHash = "sha256-dXq8O0jVpr0xxvLTrsLJbiyyOMXXtEz7OMINqDEfG4U=";
 
   nativeBuildInputs = [
     pkg-config
   ];
 
-  buildInputs = [ openssl ]
-    ++ lib.optionals stdenv.isDarwin [ CoreServices Security ];
+  buildInputs = [
+    openssl
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    darwin.apple_sdk.frameworks.CoreServices
+  ];
 
   meta = with lib; {
-    description = "A simple and opinionated tool to build your own magazine";
+    description = "Simple and opinionated tool to build your own magazine";
     homepage = "https://github.com/zineland/zine";
     changelog = "https://github.com/zineland/zine/releases/tag/v${version}";
     license = licenses.asl20;
     maintainers = with maintainers; [ dit7ya figsoda ];
+    mainProgram = "zine";
   };
 }

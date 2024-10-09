@@ -1,26 +1,25 @@
-{ lib, buildKodiAddon, fetchzip, addonUpdateScript, six, requests, inputstreamhelper }:
+{ lib, buildKodiAddon, fetchFromGitHub, requests, inputstream-adaptive, inputstreamhelper }:
 
 buildKodiAddon rec {
   pname = "youtube";
   namespace = "plugin.video.youtube";
-  version = "6.8.24+matrix.1";
+  version = "7.1.0";
 
-  src = fetchzip {
-    url = "https://mirrors.kodi.tv/addons/matrix/${namespace}/${namespace}-${version}.zip";
-    sha256 = "/yQML2iK5jcIhN6RJC+WJ8EnH640qFJFdaaVeGPEg9U=";
+  src = fetchFromGitHub {
+    owner = "anxdpanic";
+    repo = "plugin.video.youtube";
+    rev = "v${version}";
+    hash = "sha256-I3dSGcPQVVhn4RO8CHtn3FG2dheSv4XiDO7w+MtTjRU=";
   };
 
   propagatedBuildInputs = [
-    six
     requests
+    inputstream-adaptive
     inputstreamhelper
   ];
 
   passthru = {
     pythonPath = "resources/lib";
-    updateScript = addonUpdateScript {
-      attrPath = "kodi.packages.youtube";
-    };
   };
 
   meta = with lib; {

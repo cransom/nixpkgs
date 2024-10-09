@@ -1,33 +1,27 @@
 { stdenv, lib, fetchurl, buildDunePackage
 , alcotest, mirage-crypto-rng, git-binary
 , angstrom, astring, cstruct, decompress, digestif, encore, fmt, checkseum
-, fpath, ke, logs, lwt, ocamlgraph, uri, rresult, base64, hxd
+, ke, logs, lwt, ocamlgraph, uri, rresult, base64, hxd
 , result, bigstringaf, optint, mirage-flow, domain-name, emile
 , mimic, carton, carton-lwt, carton-git, ipaddr, psq, crowbar, alcotest-lwt, cmdliner
 }:
 
 buildDunePackage rec {
   pname = "git";
-  version = "3.10.1";
+  version = "3.16.1";
 
   minimalOCamlVersion = "4.08";
-  duneVersion = "3";
 
   src = fetchurl {
     url = "https://github.com/mirage/ocaml-git/releases/download/${version}/git-${version}.tbz";
-    sha256 = "sha256-plu69FIpyJcuZ8nJ3QnufLnDEjtcsoAd8czKHfzTkd8=";
+    hash = "sha256-wDW9zM2eTS9IxtnNxl5h/BCDjs8dim8qN2riCoqSSAM=";
   };
-
-  # remove changelog for the carton package
-  postPatch = ''
-    rm CHANGES.carton.md
-  '';
 
   buildInputs = [
     base64
   ];
   propagatedBuildInputs = [
-    angstrom astring checkseum cstruct decompress digestif encore fmt fpath
+    angstrom astring checkseum cstruct decompress digestif encore fmt
     ke logs lwt ocamlgraph uri rresult result bigstringaf optint mirage-flow
     domain-name emile mimic carton carton-lwt carton-git ipaddr psq hxd
   ];
@@ -37,7 +31,7 @@ buildDunePackage rec {
   checkInputs = [
     alcotest alcotest-lwt mirage-crypto-rng crowbar cmdliner
   ];
-  doCheck = !stdenv.isAarch64;
+  doCheck = !stdenv.hostPlatform.isAarch64;
 
   meta = {
     description = "Git format and protocol in pure OCaml";

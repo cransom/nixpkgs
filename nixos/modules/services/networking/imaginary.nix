@@ -1,28 +1,31 @@
 { lib, config, pkgs, utils, ... }:
 
 let
-  inherit (lib) mdDoc mkEnableOption mkIf mkOption types;
+  inherit (lib) mkEnableOption mkIf mkOption types;
 
   cfg = config.services.imaginary;
 in {
   options.services.imaginary = {
-    enable = mkEnableOption (mdDoc "imaginary image processing microservice");
+    enable = mkEnableOption "imaginary image processing microservice";
 
     address = mkOption {
       type = types.str;
-      default = "";
-      description = mdDoc "Bind address. Corresponds to the `-a` flag.";
-      example = "localhost";
+      default = "localhost";
+      description = ''
+        Bind address. Corresponds to the `-a` flag.
+        Set to `""` to bind to all addresses.
+      '';
+      example = "[::1]";
     };
 
     port = mkOption {
       type = types.port;
       default = 8088;
-      description = mdDoc "Bind port. Corresponds to the `-p` flag.";
+      description = "Bind port. Corresponds to the `-p` flag.";
     };
 
     settings = mkOption {
-      description = mdDoc ''
+      description = ''
         Command line arguments passed to the imaginary executable, stripped of
         the prefix `-`. See upstream's
         [README](https://github.com/h2non/imaginary#command-line-usage) for all
@@ -40,7 +43,7 @@ in {
           return-size = mkOption {
             type = types.bool;
             default = false;
-            description = mdDoc "Return the image size in the HTTP headers.";
+            description = "Return the image size in the HTTP headers.";
           };
         };
       };

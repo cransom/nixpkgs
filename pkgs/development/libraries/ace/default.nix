@@ -14,7 +14,7 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ pkg-config libtool ];
   buildInputs = [ perl ];
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
     "-Wno-error=format-security"
   ];
 
@@ -34,6 +34,7 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     homepage = "https://www.dre.vanderbilt.edu/~schmidt/ACE.html";
     description = "ADAPTIVE Communication Environment";
+    mainProgram = "ace_gperf";
     license = licenses.doc;
     maintainers = with maintainers; [ nico202 ];
     platforms = platforms.linux;

@@ -19,9 +19,9 @@ stdenv.mkDerivation rec {
   '';
 
   nativeBuildInputs = [ unzip zip perl aspell dos2unix ];
-  buildInputs = lib.optional (!stdenv.isLinux) libiconv;
+  buildInputs = lib.optional (!stdenv.hostPlatform.isLinux) libiconv;
 
-  NIX_CFLAGS_COMPILE = "-Wno-narrowing";
+  env.NIX_CFLAGS_COMPILE = "-Wno-narrowing";
 
   preConfigure = ''
     patchShebangs .

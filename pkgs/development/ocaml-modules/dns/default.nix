@@ -17,14 +17,13 @@
 
 buildDunePackage rec {
   pname = "dns";
-  version = "6.4.1";
+  version = "8.0.0";
 
   minimalOCamlVersion = "4.08";
-  duneVersion = "3";
 
   src = fetchurl {
     url = "https://github.com/mirage/ocaml-dns/releases/download/v${version}/dns-${version}.tbz";
-    hash = "sha256-omG0fKZAHGc+4ERC8cyK47jeEkiBZkB+1fz46j6SDno=";
+    hash = "sha256-CIIGG8W/p1FasmyEyoBiMjrFkxs/iuKVJ5SwySfYhU4=";
   };
 
   propagatedBuildInputs = [ fmt logs ptime domain-name gmap cstruct ipaddr lru duration metrics base64 ];
@@ -33,7 +32,7 @@ buildDunePackage rec {
   checkInputs = [ alcotest ];
 
   meta = {
-    description = "An Domain Name System (DNS) library";
+    description = "Domain Name System (DNS) library";
     homepage = "https://github.com/mirage/ocaml-dns";
     license = lib.licenses.bsd2;
     maintainers = [ lib.maintainers.vbgl ];

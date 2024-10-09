@@ -2,13 +2,13 @@
 
 stdenv.mkDerivation {
   pname = "rtl8814au";
-  version = "${kernel.version}-unstable-2022-11-09";
+  version = "${kernel.version}-unstable-2024-05-26";
 
   src = fetchFromGitHub {
     owner = "morrownr";
     repo = "8814au";
-    rev = "932df6f7da6c3a384cf91f33eb195097eb0cb6c5";
-    hash = "sha256-nMQiT59IIhzpePWWDiyCQFmYLWM42L/mG0BKsbEwreo=";
+    rev = "810573647b837d88c4191597a0ea6d226f69f64c";
+    hash = "sha256-AaOnUy3igocsCF/FNogn+z+QcQiid7U7XimE68wAco0=";
   };
 
   nativeBuildInputs = kernel.moduleBuildDependencies;
@@ -16,7 +16,7 @@ stdenv.mkDerivation {
 
   hardeningDisable = [ "pic" ];
 
-  NIX_CFLAGS_COMPILE="-Wno-error=incompatible-pointer-types";
+  env.NIX_CFLAGS_COMPILE = "-Wno-error=incompatible-pointer-types";
 
   prePatch = ''
     substituteInPlace ./Makefile \

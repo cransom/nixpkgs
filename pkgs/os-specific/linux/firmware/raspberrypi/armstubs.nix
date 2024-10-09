@@ -14,7 +14,7 @@ stdenv.mkDerivation {
     hash = "sha512-KMHgj73eXHT++IE8DbCsFeJ87ngc9R3XxMUJy4Z3s4/MtMeB9zblADHkyJqz9oyeugeJTrDtuVETPBRo7M4Y8A==";
   };
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
     "-march=armv8-a+crc"
   ];
 
@@ -32,8 +32,8 @@ stdenv.mkDerivation {
     "OBJCOPY7=${stdenv.cc.targetPrefix}objcopy"
     "OBJDUMP7=${stdenv.cc.targetPrefix}objdump"
   ]
-  ++ optionals (stdenv.isAarch64) [ "armstub8.bin" "armstub8-gic.bin" ]
-  ++ optionals (stdenv.isAarch32) [ "armstub7.bin" "armstub8-32.bin" "armstub8-32-gic.bin" ]
+  ++ optionals (stdenv.hostPlatform.isAarch64) [ "armstub8.bin" "armstub8-gic.bin" ]
+  ++ optionals (stdenv.hostPlatform.isAarch32) [ "armstub7.bin" "armstub8-32.bin" "armstub8-32-gic.bin" ]
   ;
 
   installPhase = ''
@@ -48,6 +48,6 @@ stdenv.mkDerivation {
     homepage = "https://github.com/raspberrypi/tools";
     license = licenses.bsd3;
     platforms = [ "armv6l-linux" "armv7l-linux" "aarch64-linux" ];
-    maintainers = with maintainers; [ samueldr ];
+    maintainers = [ ];
   };
 }

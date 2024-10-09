@@ -31,7 +31,7 @@ stdenv.mkDerivation rec {
   # gcc-10. Otherwise build fails as:
   #   ld: ../readelf-mini/libreadelf-mini.a(dwarf.o):/build/source/readelf-mini/dwarf.c:64:
   #     multiple definition of `do_wide'; ../readelf-mini/libreadelf-mini.a(readelf-mini.o):/build/source/readelf-mini/readelf-mini.c:170: first defined here
-  NIX_CFLAGS_COMPILE = "-fcommon";
+  env.NIX_CFLAGS_COMPILE = "-fcommon";
 
   installPhase = ''
     install -d $out/bin
@@ -40,7 +40,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://github.com/usnistgov/corr-CDE";
-    description = "A packaging tool for building portable packages";
+    description = "Packaging tool for building portable packages";
     license = licenses.gpl3Plus;
     maintainers = [ maintainers.rlupton20 ];
     platforms = platforms.linux;

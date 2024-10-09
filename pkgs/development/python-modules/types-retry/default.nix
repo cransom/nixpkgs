@@ -1,24 +1,23 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
 }:
 
 buildPythonPackage rec {
   pname = "types-retry";
-  version = "0.9.9.1";
+  version = "0.9.9.4";
   format = "setuptools";
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-NE6tQ4fg6YxtYDdYwTGO5OWwRCnOy5o0Khz4c947UQ0=";
+    hash = "sha256-5HMdxoS1a4ddl0ZFmtZl07woGla1MKzfHJdzAWd5mUE=";
   };
 
   # Modules doesn't have tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "retry-stubs"
-  ];
+  pythonImportsCheck = [ "retry-stubs" ];
 
   meta = with lib; {
     description = "Typing stubs for retry";

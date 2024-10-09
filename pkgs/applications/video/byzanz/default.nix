@@ -1,9 +1,9 @@
 { lib, stdenv
 , fetchgit
-, wrapGAppsHook
+, wrapGAppsHook3
 , cairo
 , glib
-, gnome
+, gnome-common
 , gst_all_1
 , gtk3
 , intltool
@@ -29,7 +29,7 @@ stdenv.mkDerivation {
     ./autogen.sh --prefix=$out
   '';
 
-  NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " [
+  env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " [
     "-Wno-error=deprecated-declarations"
     "-Wno-error=incompatible-pointer-types"
   ];
@@ -37,7 +37,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [ pkg-config intltool ];
   buildInputs = [
     which
-    gnome.gnome-common
+    gnome-common
     glib
     libtool
     cairo
@@ -51,7 +51,7 @@ stdenv.mkDerivation {
     gst-plugins-good
     gst-plugins-ugly
     gst-libav
-    wrapGAppsHook
+    wrapGAppsHook3
   ]);
 
   meta = with lib; {

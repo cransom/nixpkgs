@@ -1,54 +1,82 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, rustPlatform
-, libiconv
-, fetchzip
-, typing-extensions
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  rustPlatform,
+  cmake,
+  libiconv,
+  fetchFromGitHub,
+  jemalloc,
+  rust-jemalloc-sys,
+  darwin,
 }:
+
 let
-  pname = "polars";
-  version = "0.15.13";
-  rootSource = fetchzip {
-    url = "https://github.com/pola-rs/${pname}/archive/refs/tags/py-${version}.tar.gz";
-    sha256 = "sha256-bk2opNLN3L+fkzXVfUU5O37UmA27ijmnAElCHjsuI+o=";
+  rust-jemalloc-sys' = rust-jemalloc-sys.override {
+    jemalloc = jemalloc.override { disableInitExecTls = true; };
   };
 in
-buildPythonPackage {
-  inherit pname version;
-  format = "pyproject";
-  disabled = pythonOlder "3.6";
-  src = rootSource;
 
-  # Cargo.lock files is sometimes behind actual release which throws an error,
+buildPythonPackage rec {
+  pname = "polars";
+  version = "1.7.1";
+  pyproject = true;
+
+  src = fetchFromGitHub {
+    owner = "pola-rs";
+    repo = "polars";
+    rev = "refs/tags/py-${version}";
+    hash = "sha256-vbligrFrCd7BiPV8n1iRIlurPNirJKOiD4/P5qEpirg=";
+  };
+
+  # Cargo.lock file is sometimes behind actual release which throws an error,
   # thus the `sed` command
   # Make sure to check that the right substitutions are made when updating the package
   preBuild = ''
-      cd py-polars
-      sed -i 's/version = "0.15.11"/version = "${version}"/g' Cargo.lock
+    #sed -i 's/version = "0.18.0"/version = "${version}"/g' Cargo.lock
   '';
 
-  cargoDeps = rustPlatform.fetchCargoTarball {
-    src = rootSource;
-    preBuild = ''
-        cd py-polars
-    '';
-    name = "${pname}-${version}";
-    sha256 = "sha256-u7ascftUPz8K+gWwjjxdXXFJf++M+8P9QE/KVJkO5DM=";
+  cargoDeps = rustPlatform.importCargoLock {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "numpy-0.21.0" = "sha256-u0Z+6L8pXSPaA3cE1sUpY6sCoaU1clXUcj/avnNzmsw=";
+    };
   };
-  cargoRoot = "py-polars";
+
+  buildAndTestSubdir = "py-polars";
 
   # Revisit this whenever package or Rust is upgraded
   RUSTC_BOOTSTRAP = 1;
 
-  propagatedBuildInputs = lib.optionals (pythonOlder "3.10") [ typing-extensions ];
+  # trick taken from the polars repo since there seems to be a problem
+  # with simd enabled with our stable rust (instead of nightly).
+  maturinBuildFlags = [
+    "--no-default-features"
+    "--all-features"
+  ];
 
-  nativeBuildInputs = with rustPlatform; [ cargoSetupHook maturinBuildHook ];
+  dontUseCmakeConfigure = true;
 
-  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
+  nativeBuildInputs =
+    [
+      # needed for libz-ng-sys
+      # TODO: use pkgs.zlib-ng
+      cmake
+    ]
+    ++ (with rustPlatform; [
+      cargoSetupHook
+      maturinBuildHook
+    ]);
 
-  pythonImportsCheck = [ "polars" ];
+  buildInputs =
+    [ rust-jemalloc-sys' ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      libiconv
+      darwin.apple_sdk.frameworks.AppKit
+      darwin.apple_sdk.frameworks.Security
+      darwin.apple_sdk.frameworks.SystemConfiguration
+    ];
+
   # nativeCheckInputs = [
   #   pytestCheckHook
   #   fixtures
@@ -59,11 +87,13 @@ buildPythonPackage {
   #   pydot
   # ];
 
-  meta = with lib; {
-    broken = (stdenv.isLinux && stdenv.isAarch64) || stdenv.isDarwin;
-    description = "Fast multi-threaded DataFrame library in Rust | Python | Node.js ";
+  pythonImportsCheck = [ "polars" ];
+
+  meta = {
+    description = "Fast multi-threaded DataFrame library";
     homepage = "https://github.com/pola-rs/polars";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ happysalada ];
+    changelog = "https://github.com/pola-rs/polars/releases/tag/py-${version}";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ happysalada ];
   };
 }

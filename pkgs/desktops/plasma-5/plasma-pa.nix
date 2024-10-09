@@ -1,5 +1,4 @@
 { mkDerivation
-, lib
 , extra-cmake-modules
 , kdoctools
 , kcmutils
@@ -12,7 +11,6 @@
 , plasma-framework
 , qtbase
 , qtdeclarative
-, gconf
 , glib
 , libcanberra-gtk3
 , libpulseaudio
@@ -23,7 +21,6 @@ mkDerivation {
   pname = "plasma-pa";
   nativeBuildInputs = [ extra-cmake-modules kdoctools ];
   buildInputs = [
-    gconf
     glib
     libcanberra-gtk3
     libpulseaudio

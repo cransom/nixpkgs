@@ -5,7 +5,6 @@
 , pkg-config
 , meson
 , ninja
-, python3
 , vala
 , desktop-file-utils
 , gtk3
@@ -15,18 +14,19 @@
 , vte
 , libgee
 , pcre2
-, wrapGAppsHook
+, wrapGAppsHook3
+, xvfb-run
 }:
 
 stdenv.mkDerivation rec {
   pname = "elementary-terminal";
-  version = "6.1.1";
+  version = "6.2.0";
 
   src = fetchFromGitHub {
     owner = "elementary";
     repo = "terminal";
     rev = version;
-    sha256 = "sha256-HnCKLN07tlfosXIHHKcHyTtqULqE4irBnYssyMMO5xk=";
+    sha256 = "sha256-o5hMrsn6OBk/2ycCDdT8n6gQUWcRuoaHqnmkODnJ6B8=";
   };
 
   nativeBuildInputs = [
@@ -34,9 +34,9 @@ stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
-    python3
     vala
-    wrapGAppsHook
+    wrapGAppsHook3
+    xvfb-run
   ];
 
   buildInputs = [
@@ -48,11 +48,6 @@ stdenv.mkDerivation rec {
     pcre2
     vte
   ];
-
-  postPatch = ''
-    chmod +x meson/post_install.py
-    patchShebangs meson/post_install.py
-  '';
 
   passthru = {
     updateScript = nix-update-script { };

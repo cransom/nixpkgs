@@ -3,7 +3,6 @@
 , fetchFromGitHub
 , cmake
 , ninja
-, extra-cmake-modules
 , qtbase
 , qtsvg
 , qttools
@@ -13,23 +12,24 @@
 , qtwayland
 , wayland
 , wrapQtAppsHook
+, kdePackages
 }:
 
 stdenv.mkDerivation rec {
   pname = "CopyQ";
-  version = "6.4.0";
+  version = "9.0.0";
 
   src = fetchFromGitHub {
     owner = "hluk";
     repo = "CopyQ";
     rev = "v${version}";
-    hash = "sha256-HpWzIABzg0oJqzIehIGpeATLs3ZlmLgtRKaiMIUNAFI=";
+    hash = "sha256-Dxiytspqs4+bcnUM+B3lO8iQp9rrCvMfI+WMFMCtM7g=";
   };
 
   nativeBuildInputs = [
     cmake
     ninja
-    extra-cmake-modules
+    kdePackages.extra-cmake-modules
     wrapQtAppsHook
   ];
 
@@ -42,6 +42,9 @@ stdenv.mkDerivation rec {
     libXtst
     qtwayland
     wayland
+    kdePackages.kconfig
+    kdePackages.kstatusnotifieritem
+    kdePackages.knotifications
   ];
 
   postPatch = ''
@@ -58,5 +61,6 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ artturin ];
     # NOTE: CopyQ supports windows and osx, but I cannot test these.
     platforms = platforms.linux;
+    mainProgram = "copyq";
   };
 }

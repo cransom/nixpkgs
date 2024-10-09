@@ -4,9 +4,7 @@ buildDunePackage rec {
   pname = "cfstream";
   version = "1.3.2";
 
-  duneVersion = "3";
-
-  minimalOCamlVersion = "4.04.1";
+  minimalOCamlVersion = "4.08";
 
   src = fetchFromGitHub {
     owner = "biocaml";
@@ -15,9 +13,7 @@ buildDunePackage rec {
     hash = "sha256-iSg0QsTcU0MT/Cletl+hW6bKyH0jkp7Jixqu8H59UmQ=";
   };
 
-  patches = [ ./git_commit.patch ];
-
-  strictDeps = true;
+  patches = [ ./git_commit.patch ./janestreet-0.17.patch ];
 
   nativeBuildInputs = [ m4 ];
   checkInputs = [ ounit ];

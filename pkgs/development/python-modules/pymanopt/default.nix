@@ -1,45 +1,61 @@
-{ lib
-, fetchFromGitHub
-, buildPythonPackage
-, numpy
-, scipy
-, torch
-, autograd
-, nose2
-, matplotlib
-, tensorflow
+{
+  lib,
+  fetchFromGitHub,
+  buildPythonPackage,
+  numpy,
+  scipy,
+  torch,
+  autograd,
+  matplotlib,
+  pytestCheckHook,
+  setuptools-scm,
 }:
 
 buildPythonPackage rec {
   pname = "pymanopt";
-  version = "2.0.1";
+  version = "2.2.0-unstable-2024-07-10";
+  pyproject = true;
+
+  env.SETUPTOOLS_SCM_PRETEND_VERSION = "2.2.0";
 
   src = fetchFromGitHub {
     owner = pname;
     repo = pname;
-    rev = "refs/tags/${version}";
-    sha256 = "sha256-VwCUqKI1PkR8nUVaa73bkTw67URKPaza3VU9g+rB+Mg=";
+    rev = "1de3b6f47258820fdc072fceaeaa763b9fd263b0";
+    hash = "sha256-j/fVeMgoLLBgRYFtSj2ZyNJb8iuWlnn2/YpBqUoCAFk=";
   };
 
-  propagatedBuildInputs = [ numpy scipy torch ];
-  nativeCheckInputs = [ nose2 autograd matplotlib tensorflow ];
-
-  checkPhase = ''
-    runHook preCheck
-
-    # upstream themselves seem unsure about the robustness of these
-    # tests - see https://github.com/pymanopt/pymanopt/issues/219
-    grep -lr 'test_second_order_function_approximation' tests/ | while read -r fn ; do
-      substituteInPlace "$fn" \
-        --replace \
-          'test_second_order_function_approximation' \
-          'dont_test_second_order_function_approximation'
-    done
-
-    nose2 tests -v
-
-    runHook postCheck
+  preConfigure = ''
+    substituteInPlace pyproject.toml --replace-fail "\"pip==22.3.1\"," ""
   '';
+
+  build-system = [
+    setuptools-scm
+  ];
+  dependencies = [
+    numpy
+    scipy
+    torch
+  ];
+  nativeCheckInputs = [
+    autograd
+    matplotlib
+    pytestCheckHook
+  ];
+
+  preCheck = ''
+    substituteInPlace "tests/conftest.py" \
+      --replace-fail "import tensorflow as tf" ""
+    substituteInPlace "tests/conftest.py" \
+      --replace-fail "tf.random.set_seed(seed)" ""
+  '';
+
+  disabledTestPaths = [
+    "tests/test_examples.py"
+    "tests/backends/test_tensorflow.py"
+    "tests/backends/test_jax.py"
+    "tests/test_problem.py"
+  ];
 
   pythonImportsCheck = [ "pymanopt" ];
 

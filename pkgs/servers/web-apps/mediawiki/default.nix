@@ -1,36 +1,36 @@
-{ lib, stdenv, fetchurl, writeText }:
+{ lib, stdenvNoCC, fetchurl, nixosTests }:
 
-stdenv.mkDerivation rec {
+stdenvNoCC.mkDerivation rec {
   pname = "mediawiki";
-  version = "1.39.1";
+  version = "1.42.1";
 
   src = fetchurl {
     url = "https://releases.wikimedia.org/mediawiki/${lib.versions.majorMinor version}/mediawiki-${version}.tar.gz";
-    sha256 = "sha256-3ew/kOHnsaxmgZF4yoEDfT+AhNxXfUq3cypLj5gNhfk=";
+    hash = "sha256-7IevlaNd0Jw01S4CeVZSoDCrcpVeQx8IynIqc3N+ulM=";
   };
 
   postPatch = ''
     sed -i 's|$vars = Installer::getExistingLocalSettings();|$vars = null;|' includes/installer/CliInstaller.php
   '';
 
-  installPhase = let
-    phpConfig = writeText "LocalSettings.php" ''
-      <?php
-        return require(getenv('MEDIAWIKI_CONFIG'));
-      ?>
-    '';
-  in ''
+  installPhase = ''
     runHook preInstall
 
     mkdir -p $out/share/mediawiki
     cp -r * $out/share/mediawiki
-    cp ${phpConfig} $out/share/mediawiki/LocalSettings.php
+    echo "<?php
+      return require(getenv('MEDIAWIKI_CONFIG'));
+    ?>" > $out/share/mediawiki/LocalSettings.php
 
     runHook postInstall
   '';
 
+  passthru.tests = {
+    inherit (nixosTests.mediawiki) mysql postgresql;
+  };
+
   meta = with lib; {
-    description = "The collaborative editing software that runs Wikipedia";
+    description = "Collaborative editing software that runs Wikipedia";
     license = licenses.gpl2Plus;
     homepage = "https://www.mediawiki.org/";
     platforms = platforms.all;

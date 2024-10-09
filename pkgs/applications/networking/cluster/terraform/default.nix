@@ -8,7 +8,7 @@
 , runtimeShell
 , writeText
 , terraform-providers
-, fetchpatch
+, installShellFiles
 }:
 
 let
@@ -26,21 +26,19 @@ let
         inherit hash;
       };
 
-      ldflags = [ "-s" "-w" ];
+      ldflags = [ "-s" "-w" "-X 'github.com/hashicorp/terraform/version.dev=no'" ];
 
       postConfigure = ''
         # speakeasy hardcodes /bin/stty https://github.com/bgentry/speakeasy/issues/22
         substituteInPlace vendor/github.com/bgentry/speakeasy/speakeasy_unix.go \
-          --replace "/bin/stty" "${coreutils}/bin/stty"
+          --replace-fail "/bin/stty" "${coreutils}/bin/stty"
       '';
 
+      nativeBuildInputs = [ installShellFiles ];
+
       postInstall = ''
-        # remove all plugins, they are part of the main binary now
-        for i in $out/bin/*; do
-          if [[ $(basename $i) != terraform ]]; then
-            rm "$i"
-          fi
-        done
+        # https://github.com/posener/complete/blob/9a4745ac49b29530e07dc2581745a218b646b7a3/cmd/install/bash.go#L8
+        installShellCompletion --bash --name terraform <(echo complete -C terraform terraform)
       '';
 
       preCheck = ''
@@ -55,18 +53,17 @@ let
           "Tool for building, changing, and versioning infrastructure";
         homepage = "https://www.terraform.io/";
         changelog = "https://github.com/hashicorp/terraform/blob/v${version}/CHANGELOG.md";
-        license = licenses.mpl20;
+        license = licenses.bsl11;
         maintainers = with maintainers; [
           Chili-Man
-          babariviere
           kalbasit
-          marsam
-          maxeaubrey
           timstott
           zimbatm
           zowoq
           techknowlogick
+          qjoly
         ];
+        mainProgram = "terraform";
       };
     } // attrs');
 
@@ -121,7 +118,7 @@ let
             (orig: { passthru = orig.passthru // passthru; })
         else
           lib.appendToName "with-plugins" (stdenv.mkDerivation {
-            inherit (terraform) name meta;
+            inherit (terraform) meta pname version;
             nativeBuildInputs = [ makeWrapper ];
 
             # Expose the passthru set with the override functions
@@ -168,9 +165,9 @@ rec {
   mkTerraform = attrs: pluggable (generic attrs);
 
   terraform_1 = mkTerraform {
-    version = "1.3.9";
-    hash = "sha256-gwuUdO9m4Q2tFRLSVTbcsclOq9jcbQU4JV9nIElTkQ4=";
-    vendorHash = "sha256-CE6jNBvM0980+R0e5brK5lMrkad+91qTt9mp2h3NZyY=";
+    version = "1.9.7";
+    hash = "sha256-L0F0u96et18IlqAUsc0HK+cLeav2OqN4kxs58hPNMIM=";
+    vendorHash = "sha256-tH9KQF4oHcQh34ikB9Bx6fij/iLZN+waxv5ZilqGGlU=";
     patches = [ ./provider-path-0_15.patch ];
     passthru = {
       inherit plugins;

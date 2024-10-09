@@ -1,3 +1,9 @@
+###################################################################
+#                                                                 #
+# /!\ This coqhammer package is deprecated in favor of coq-hammer #
+#                                                                 #
+###################################################################
+
 { lib, mkCoqDerivation, coq, version ? null }:
 
 mkCoqDerivation {
@@ -42,7 +48,7 @@ mkCoqDerivation {
   release."1.3-coq8.10".version  = "1.3";
   release."1.1.1-coq8.9".version = "1.1.1";
   release."1.1-coq8.9".version   = "1.1";
-  releaseRev = v: "v${v}";
+  releaseRev = v: "refs/tags/v${v}";
 
   postPatch = ''
     substituteInPlace Makefile.coq.local --replace \

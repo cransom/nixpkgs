@@ -1,39 +1,49 @@
-{ lib
-, fetchFromGitHub
-, buildGoModule
+{
+  lib,
+  fetchFromGitHub,
+  buildGoModule,
+  nix-update-script,
 }:
 buildGoModule rec {
   pname = "hysteria";
-  version = "1.3.3";
+  version = "2.5.2";
 
   src = fetchFromGitHub {
-    owner = "HyNetwork";
+    owner = "apernet";
     repo = pname;
-    rev = "v${version}";
-    sha256 = "sha256-CQgCFtvQDvhHTk10gpxfAvEJLz/i+CXXyzGrxi26hBk=";
+    rev = "app/v${version}";
+    hash = "sha256-ClWbA3cjQXK8tzXfmApBQ+TBnbRc6f36G1iIFcNQi7o=";
   };
 
-  vendorSha256 = "sha256-sN+2XYoC+dDs6QKxwxuBCW4dOf4elSNKdOrbMxjOtSY=";
+  vendorHash = "sha256-I5SCr45IT8gl8eD9BburxHBodOpP+R5rk9Khczx5z8M=";
   proxyVendor = true;
 
-  ldflags = [
-    "-s"
-    "-w"
-    "-X main.appVersion=${version}"
-  ];
+  ldflags =
+    let
+      cmd = "github.com/apernet/hysteria/app/cmd";
+    in
+    [
+      "-s"
+      "-w"
+      "-X ${cmd}.appVersion=${version}"
+      "-X ${cmd}.appType=release"
+    ];
 
   postInstall = ''
-    mv $out/bin/cmd $out/bin/hysteria
+    mv $out/bin/app $out/bin/hysteria
   '';
 
   # Network required
   doCheck = false;
 
+  passthru.updateScript = nix-update-script { };
+
   meta = with lib; {
-    description = "A feature-packed proxy & relay utility optimized for lossy, unstable connections";
-    homepage = "https://github.com/HyNetwork/hysteria";
+    description = "Feature-packed proxy & relay utility optimized for lossy, unstable connections";
+    homepage = "https://github.com/apernet/hysteria";
     license = licenses.mit;
-    platforms = platforms.linux;
+    platforms = platforms.unix;
     maintainers = with maintainers; [ oluceps ];
+    mainProgram = "hysteria";
   };
 }

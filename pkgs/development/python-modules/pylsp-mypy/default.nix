@@ -1,51 +1,54 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, mypy
-, pytestCheckHook
-, python-lsp-server
-, pythonOlder
-, toml
+{
+  lib,
+  buildPythonPackage,
+  pythonOlder,
+  fetchFromGitHub,
+
+  # build-system
+  setuptools,
+
+  # dependencies
+  mypy,
+  pytestCheckHook,
+  python-lsp-server,
+  tomli,
 }:
 
 buildPythonPackage rec {
   pname = "pylsp-mypy";
-  version = "0.6.5";
-  format = "setuptools";
+  version = "0.6.9";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
-    owner = "Richardk2n";
+    owner = "python-lsp";
     repo = "pylsp-mypy";
     rev = "refs/tags/${version}";
-    hash = "sha256-LQ9Kw/dG3XA67WaVObE72fxERb21eZzk+MCqIp2Qy0o=";
+    hash = "sha256-MP9a8dI5ggM+XEJYB6O4nYDYIXbtxi2TK5b+JQgViZQ=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     mypy
     python-lsp-server
-    toml
-  ];
+  ] ++ lib.optional (pythonOlder "3.11") tomli;
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
-  pythonImportsCheck = [
-    "pylsp_mypy"
-  ];
+  pythonImportsCheck = [ "pylsp_mypy" ];
 
   disabledTests = [
     # Tests wants to call dmypy
     "test_option_overrides_dmypy"
   ];
 
-  meta = with lib; {
+  meta = {
     description = "Mypy plugin for the Python LSP Server";
-    homepage = "https://github.com/Richardk2n/pylsp-mypy";
-    license = licenses.mit;
-    maintainers = with maintainers; [ cpcloud ];
+    homepage = "https://github.com/python-lsp/pylsp-mypy";
+    changelog = "https://github.com/python-lsp/pylsp-mypy/releases/tag/${version}";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [ cpcloud ];
   };
 }

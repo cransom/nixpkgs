@@ -33,22 +33,23 @@ let
     procps
     gnused
     coreutils # used by helper scripts
-  ] ++ lib.optionals stdenv.isLinux [ systemd ]); # for systemd unit activation check
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [ systemd ]); # for systemd unit activation check
 in
 
 stdenv.mkDerivation rec {
   pname = "rabbitmq-server";
-  version = "3.11.8";
+  version = "3.13.7";
 
   # when updating, consider bumping elixir version in all-packages.nix
   src = fetchurl {
     url = "https://github.com/rabbitmq/rabbitmq-server/releases/download/v${version}/${pname}-${version}.tar.xz";
-    hash = "sha256-sD9E60xXNJQSg98XbMq6xn+nk3uQn1XnrxApAuSaF44=";
+    hash = "sha256-GDUyYudwhQSLrFXO21W3fwmH2tl2STF9gSuZsb3GZh0=";
   };
 
   nativeBuildInputs = [ unzip xmlto docbook_xml_dtd_45 docbook_xsl zip rsync python3 ];
+
   buildInputs = [ erlang elixir libxml2 libxslt glibcLocales ]
-    ++ lib.optionals stdenv.isDarwin [ AppKit Carbon Cocoa ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ AppKit Carbon Cocoa ];
 
   outputs = [ "out" "man" "doc" ];
 
@@ -56,6 +57,7 @@ stdenv.mkDerivation rec {
     "PREFIX=${placeholder "out"}"
     "RMQ_ERLAPP_DIR=${placeholder "out"}"
   ];
+
   installTargets = [ "install" "install-man" ];
 
   preBuild = ''
@@ -83,11 +85,12 @@ stdenv.mkDerivation rec {
     vm-test = nixosTests.rabbitmq;
   };
 
-  meta = with lib; {
+  meta = {
     homepage = "https://www.rabbitmq.com/";
-    description = "An implementation of the AMQP messaging protocol";
-    license = licenses.mpl20;
-    platforms = platforms.unix;
-    maintainers = with maintainers; [ turion ];
+    description = "Implementation of the AMQP messaging protocol";
+    changelog = "https://github.com/rabbitmq/rabbitmq-server/releases/tag/v${version}";
+    license = lib.licenses.mpl20;
+    platforms = lib.platforms.unix;
+    maintainers = [ ];
   };
 }

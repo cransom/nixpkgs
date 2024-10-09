@@ -1,45 +1,40 @@
-{ lib
-, aiohttp
-, aioresponses
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, pytest-aiohttp
-, poetry-core
-, pytest-asyncio
-, pytest-cov
-, pytestCheckHook
+{
+  lib,
+  aiohttp,
+  aioresponses,
+  buildPythonPackage,
+  fetchFromGitHub,
+  poetry-core,
+  pytest-aiohttp,
+  pytest-asyncio,
+  pytest-cov-stub,
+  pytestCheckHook,
+  pythonOlder,
 }:
 
 buildPythonPackage rec {
   pname = "pyairnow";
-  version = "1.1.0";
-  format = "pyproject";
+  version = "1.2.2";
+  pyproject = true;
+
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
     owner = "asymworks";
-    repo = pname;
-    rev = "v${version}";
-    sha256 = "1hkpfl8rdwyzqrr1drqlmcw3xpv3pi1jf19h1divspbzwarqxs1c";
+    repo = "pyairnow";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-KjOu9V92n2rq8iOkgutlK7EMRvirFAEK8oxseI+dr2s=";
   };
 
-  patches = [
-    (fetchpatch {
-      name = "switch-to-poetry-core.patch";
-      url = "https://github.com/asymworks/pyairnow/commit/f7a01733a41c648563fc2fe4b559f61ef08b9153.patch";
-      hash = "sha256-lcHnFP3bwkPTi9Zq1dZtShLKyXcxO0XoDF+PgjbWOqs=";
-    })
-  ];
+  build-system = [ poetry-core ];
 
-  nativeBuildInputs = [ poetry-core ];
-
-  propagatedBuildInputs = [ aiohttp ];
+  dependencies = [ aiohttp ];
 
   nativeCheckInputs = [
     aioresponses
     pytest-asyncio
     pytest-aiohttp
-    pytest-cov
+    pytest-cov-stub
     pytestCheckHook
   ];
 
@@ -48,7 +43,8 @@ buildPythonPackage rec {
   meta = with lib; {
     description = "Python wrapper for EPA AirNow Air Quality API";
     homepage = "https://github.com/asymworks/pyairnow";
-    license = with licenses; [ mit ];
+    changelog = "https://github.com/asymworks/pyairnow/blob/v${version}/CHANGELOG.md";
+    license = licenses.mit;
     maintainers = with maintainers; [ fab ];
   };
 }

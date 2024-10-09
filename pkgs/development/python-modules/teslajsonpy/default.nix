@@ -1,43 +1,44 @@
-{ lib
-, aiohttp
-, authcaptureproxy
-, backoff
-, beautifulsoup4
-, buildPythonPackage
-, fetchFromGitHub
-, httpx
-, poetry-core
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
-, tenacity
-, wrapt
+{
+  lib,
+  aiohttp,
+  authcaptureproxy,
+  backoff,
+  beautifulsoup4,
+  buildPythonPackage,
+  fetchFromGitHub,
+  httpx,
+  orjson,
+  poetry-core,
+  pytest-asyncio,
+  pytestCheckHook,
+  pythonOlder,
+  tenacity,
+  wrapt,
 }:
 
 buildPythonPackage rec {
   pname = "teslajsonpy";
-  version = "3.7.2";
-  format = "pyproject";
+  version = "3.12.1";
+  pyproject = true;
 
   disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "zabuldon";
-    repo = pname;
+    repo = "teslajsonpy";
     rev = "refs/tags/v${version}";
-    hash = "sha256-VOxdX6O6MG2F2ENiFI5+i7Yh+onHq755DsL7obm6Tcg=";
+    hash = "sha256-kUuvzjQBHWy3Si/Ha9M01ijv4QyQwK/g5gyhd7/lIdA=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  build-system = [ poetry-core ];
 
-  propagatedBuildInputs = [
+  dependencies = [
     authcaptureproxy
     aiohttp
     backoff
     beautifulsoup4
     httpx
+    orjson
     tenacity
     wrapt
   ];
@@ -47,9 +48,7 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "teslajsonpy"
-  ];
+  pythonImportsCheck = [ "teslajsonpy" ];
 
   meta = with lib; {
     description = "Python library to work with Tesla API";

@@ -1,11 +1,20 @@
-{ lib, callPackage, tree-sitter, neovim, runCommand }:
+{ lib, callPackage, tree-sitter, neovim, neovimUtils, runCommand }:
 
 self: super:
 
 let
-  generatedGrammars = callPackage ./generated.nix {
+  inherit (neovimUtils) grammarToPlugin;
+
+  initialGeneratedGrammars = callPackage ./generated.nix {
     inherit (tree-sitter) buildGrammar;
   };
+  grammarOverrides = final: prev: {
+    nix = prev.nix.overrideAttrs {
+      # workaround for https://github.com/NixOS/nixpkgs/issues/332580
+      prePatch = "rm queries/highlights.scm";
+    };
+  };
+  generatedGrammars = lib.fix (lib.extends grammarOverrides (_: initialGeneratedGrammars));
 
   generatedDerivations = lib.filterAttrs (_: lib.isDerivation) generatedGrammars;
 
@@ -34,29 +43,10 @@ let
   # or for all grammars:
   # pkgs.vimPlugins.nvim-treesitter.withAllGrammars
   withPlugins =
-    f: self.nvim-treesitter.overrideAttrs (_: {
-      passthru.dependencies = map
-        (grammar:
-          let
-            name = lib.pipe grammar [
-              lib.getName
-
-              # added in buildGrammar
-              (lib.removeSuffix "-grammar")
-
-              # grammars from tree-sitter.builtGrammars
-              (lib.removePrefix "tree-sitter-")
-              (lib.replaceStrings [ "-" ] [ "_" ])
-            ];
-          in
-
-          runCommand "nvim-treesitter-${name}-grammar" { } ''
-            mkdir -p $out/parser
-            ln -s ${grammar}/parser $out/parser/${name}.so
-          ''
-        )
+    f: self.nvim-treesitter.overrideAttrs {
+      passthru.dependencies = map grammarToPlugin
         (f (tree-sitter.builtGrammars // builtGrammars));
-    });
+    };
 
   withAllGrammars = withPlugins (_: allGrammars);
 in
@@ -66,8 +56,10 @@ in
     rm -r parser
   '';
 
-  passthru = {
-    inherit builtGrammars allGrammars withPlugins withAllGrammars;
+  passthru = (super.nvim-treesitter.passthru or { }) // {
+    inherit builtGrammars allGrammars grammarToPlugin withPlugins withAllGrammars;
+
+    grammarPlugins = lib.mapAttrs (_: grammarToPlugin) generatedDerivations;
 
     tests.check-queries =
       let

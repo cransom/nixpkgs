@@ -1,40 +1,38 @@
-{ lib
-, aiohttp
-, backoff
-, buildPythonPackage
-, fetchPypi
-, poetry-core
-, pythonOlder
+{
+  lib,
+  aiohttp,
+  backoff,
+  buildPythonPackage,
+  fetchPypi,
+  importlib-metadata,
+  poetry-core,
+  pythonOlder,
 }:
 
 buildPythonPackage rec {
   pname = "pypoolstation";
-  version = "0.4.9";
+  version = "0.5.6";
   format = "pyproject";
 
   disabled = pythonOlder "3.7";
 
   src = fetchPypi {
-    pname = "PyPoolstation";
-    inherit version;
-    sha256 = "sha256-2smgsR5f2fzmutr4EjhyrFWrO9odTba0ux+0B6k3+9Y=";
+    inherit pname version;
+    hash = "sha256-E5/Z7TgIZlbIDB9I+DJI812ce8ctidDAXGCHBFzk7F8=";
   };
 
-  nativeBuildInputs = [
-    poetry-core
-  ];
+  nativeBuildInputs = [ poetry-core ];
 
   propagatedBuildInputs = [
     aiohttp
     backoff
+    importlib-metadata
   ];
 
   # Project has no tests
   doCheck = false;
 
-  pythonImportsCheck = [
-    "pypoolstation"
-  ];
+  pythonImportsCheck = [ "pypoolstation" ];
 
   meta = with lib; {
     description = "Python library to interact the the Poolstation platform";

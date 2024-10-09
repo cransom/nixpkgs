@@ -3,30 +3,53 @@
 , fetchFromGitHub
 , protobuf
 , stdenv
+, pkg-config
+, openssl
+, rust-jemalloc-sys
+, nix-update-script
+, Security
+, SystemConfiguration
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "qdrant";
-  version = "0.11.2";
+  version = "1.11.5";
 
   src = fetchFromGitHub {
     owner = "qdrant";
     repo = "qdrant";
     rev = "refs/tags/v${version}";
-    sha256 = "sha256-MT2k4k/g97iXVUCz1dYJdL+JBCLKTWqE2u2Yiuvd/nw=";
+    sha256 = "sha256-yE7/xnAf0U9BpEEmtgXSH+EerUB20KeFePavuGW08f0=";
   };
 
-  cargoSha256 = "sha256-86F7B+SKaAxu7c3kyYurI5jPnnbvtdD0jouNCzT0A50=";
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "tar-0.4.41" = "sha256-32n96yoGbDzhgVZvISLGwxHuv7PGtxde5ma/YlsR1Gg=";
+      "wal-0.1.2" = "sha256-QcyS0v7O1BziVT3oahebpq+u4l5JGaujCaRIPdmsJl4=";
+    };
+  };
 
-  prePatch = lib.optionalString stdenv.isAarch64 ''
-    substituteInPlace .cargo/config.toml \
-      --replace "[target.aarch64-unknown-linux-gnu]" "" \
-      --replace "linker = \"aarch64-linux-gnu-gcc\"" ""
-  '';
+  buildInputs = [
+    openssl
+    rust-jemalloc-sys
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    Security
+    SystemConfiguration
+  ];
 
-  nativeBuildInputs = [ protobuf rustPlatform.bindgenHook ];
+  nativeBuildInputs = [ protobuf rustPlatform.bindgenHook pkg-config ];
 
-  NIX_CFLAGS_COMPILE = lib.optional stdenv.isDarwin "-faligned-allocation";
+  env = {
+    # Needed to get openssl-sys to use pkg-config.
+    OPENSSL_NO_VENDOR = 1;
+  } // lib.optionalAttrs stdenv.cc.isClang {
+    NIX_CFLAGS_COMPILE = "-faligned-allocation";
+  };
+
+  passthru = {
+    updateScript = nix-update-script { };
+  };
 
   meta = with lib; {
     description = "Vector Search Engine for the next generation of AI applications";

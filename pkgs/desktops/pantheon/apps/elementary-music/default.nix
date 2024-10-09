@@ -5,7 +5,6 @@
 , meson
 , ninja
 , pkg-config
-, python3
 , vala
 , wrapGAppsHook4
 , elementary-gtk-theme
@@ -14,24 +13,24 @@
 , granite7
 , gst_all_1
 , gtk4
+, libadwaita
 }:
 
 stdenv.mkDerivation rec {
   pname = "elementary-music";
-  version = "7.0.1";
+  version = "8.0.0";
 
   src = fetchFromGitHub {
     owner = "elementary";
     repo = "music";
     rev = version;
-    sha256 = "sha256-PttmC1Z3rX2XWCECc320HMs692hSBsxkmnh1Q8a/Mg8=";
+    sha256 = "sha256-pqOAeHTFWSoJqXE9UCUkVIy5T7EoYsieJ4PMU1oX9ko=";
   };
 
   nativeBuildInputs = [
     meson
     ninja
     pkg-config
-    python3
     vala
     wrapGAppsHook4
   ];
@@ -41,6 +40,7 @@ stdenv.mkDerivation rec {
     glib
     granite7
     gtk4
+    libadwaita
   ] ++ (with gst_all_1; [
     gst-plugins-bad
     gst-plugins-base
@@ -48,11 +48,6 @@ stdenv.mkDerivation rec {
     gst-plugins-ugly
     gstreamer
   ]);
-
-  postPatch = ''
-    chmod +x meson/post_install.py
-    patchShebangs meson/post_install.py
-  '';
 
   preFixup = ''
     gappsWrapperArgs+=(

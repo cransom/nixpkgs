@@ -1,21 +1,24 @@
-{ lib, stdenv, fetchFromGitHub, buildLinux, ... } @ args:
+{ lib, stdenv, fetchFromGitHub, buildLinux, variant, ... } @ args:
 
 let
   # These names are how they are designated in https://xanmod.org.
-  ltsVariant = {
-    version = "5.15.89";
-    hash = "sha256-wlb6er8L2EaqgJbmbATBdSxx1BGcJXNcsu+/4UBmYdQ=";
-    variant = "lts";
+
+  # NOTE: When updating these, please also take a look at the changes done to
+  # kernel config in the xanmod version commit
+  variants = {
+    lts = {
+      version = "6.6.54";
+      hash = "sha256-i6Rm0Qasgxpw9XcK938IJ+qZ+V2z82zpuly2Au2J18Q=";
+    };
+    main = {
+      version = "6.11.2";
+      hash = "sha256-4BXPZs8lp/O/JGWFIO/J1HyOjByaqWQ9O6/jx76TIDs=";
+    };
   };
 
-  mainVariant = {
-    version = "6.1.7";
-    hash = "sha256-cgUxM40cDl4lzoF4St3ckKAtsle2PRehfSag3VaycrY=";
-    variant = "main";
-  };
-
-  xanmodKernelFor = { version, suffix ? "xanmod1", hash, variant }: buildLinux (args // rec {
+  xanmodKernelFor = { version, suffix ? "xanmod1", hash }: buildLinux (args // rec {
     inherit version;
+    pname = "linux-xanmod";
     modDirVersion = lib.versions.pad 3 "${version}-${suffix}";
 
     src = fetchFromGitHub {
@@ -26,44 +29,38 @@ let
     };
 
     structuredExtraConfig = with lib.kernel; {
-      # AMD P-state driver
-      X86_AMD_PSTATE = lib.mkOverride 60 yes;
+      # CPUFreq governor Performance
+      CPU_FREQ_DEFAULT_GOV_PERFORMANCE = lib.mkOverride 60 yes;
+      CPU_FREQ_DEFAULT_GOV_SCHEDUTIL = lib.mkOverride 60 no;
 
-      # Google's BBRv2 TCP congestion Control
-      TCP_CONG_BBR2 = yes;
-      DEFAULT_BBR2 = yes;
+      # Full preemption
+      PREEMPT = lib.mkOverride 60 yes;
+      PREEMPT_VOLUNTARY = lib.mkOverride 60 no;
 
-      # Multigenerational LRU framework
-      # This can be removed when the LTS variant reaches version >= 6.1 (since it's on by default then)
-      LRU_GEN = yes;
-      LRU_GEN_ENABLED = yes;
+      # Google's BBRv3 TCP congestion Control
+      TCP_CONG_BBR = yes;
+      DEFAULT_BBR = yes;
 
-      # FQ-PIE Packet Scheduling
-      NET_SCH_DEFAULT = yes;
-      DEFAULT_FQ_PIE = yes;
-
-      # Futex WAIT_MULTIPLE implementation for Wine / Proton Fsync.
-      FUTEX = yes;
-      FUTEX_PI = yes;
-
-      # WineSync driver for fast kernel-backed Wine
-      WINESYNC = module;
-
-      # Preemptive Full Tickless Kernel at 500Hz
-      HZ = freeform "500";
-      HZ_500 = yes;
+      # Preemptive Full Tickless Kernel at 250Hz
+      HZ = freeform "250";
+      HZ_250 = yes;
       HZ_1000 = no;
+
+      # RCU_BOOST and RCU_EXP_KTHREAD
+      RCU_EXPERT = yes;
+      RCU_FANOUT = freeform "64";
+      RCU_FANOUT_LEAF = freeform "16";
+      RCU_BOOST = yes;
+      RCU_BOOST_DELAY = freeform "0";
+      RCU_EXP_KTHREAD = yes;
     };
 
     extraMeta = {
       branch = lib.versions.majorMinor version;
-      maintainers = with lib.maintainers; [ fortuneteller2k lovesegfault atemu ];
+      maintainers = with lib.maintainers; [ moni lovesegfault atemu shawn8901 zzzsy ];
       description = "Built with custom settings and new features built to provide a stable, responsive and smooth desktop experience";
-      broken = stdenv.isAarch64;
+      broken = stdenv.hostPlatform.isAarch64;
     };
   } // (args.argsOverride or { }));
 in
-{
-  lts = xanmodKernelFor ltsVariant;
-  main = xanmodKernelFor mainVariant;
-}
+xanmodKernelFor variants.${variant}

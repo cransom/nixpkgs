@@ -1,11 +1,6 @@
 { mkDerivation
-, lib
 , extra-cmake-modules
 , kdoctools
-, coreutils
-, dbus
-, gnugrep
-, gnused
 , libdbusmenu
 , pam
 , wayland
@@ -30,11 +25,8 @@
 , maliit-framework
 , maliit-keyboard
 , qtfeedback
-, qtwayland
 , qttools
 }:
-
-let inherit (lib) getBin getLib; in
 
 mkDerivation {
   pname = "plasma-mobile";

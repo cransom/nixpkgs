@@ -14,7 +14,7 @@
 , pkg-config
 , proj
 , python3
-, wrapGAppsHook
+, wrapGAppsHook3
 , wxGTK32
 }:
 
@@ -39,20 +39,22 @@ stdenv.mkDerivation rec {
     perl
     pkg-config
     python3
-    wrapGAppsHook
+    wrapGAppsHook3
   ];
 
   buildInputs = [
     ffmpeg
     glib
-    libGLU
-    mesa
     proj
     wxGTK32
   ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     Carbon
     Cocoa
   ] ++ lib.optionals stdenv.hostPlatform.isLinux [
+    # TODO: libGLU doesn't build for macOS because of Mesa issues
+    # (#233265); is it required for anything?
+    libGLU
+    mesa
     libICE
     libX11
   ];
@@ -62,7 +64,7 @@ stdenv.mkDerivation rec {
   '';
 
   enableParallelBuilding = true;
-  doCheck = (!stdenv.isDarwin); # times out
+  doCheck = (!stdenv.hostPlatform.isDarwin); # times out
   enableParallelChecking = false;
 
   meta = with lib; {

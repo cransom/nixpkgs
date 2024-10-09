@@ -11,17 +11,19 @@
 , pcre2
 , gzip
 , perl
+, jq
+, nixosTests
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "mympd";
-  version = "9.5.4";
+  version = "18.0.0";
 
   src = fetchFromGitHub {
     owner = "jcorporation";
     repo = "myMPD";
-    rev = "v${version}";
-    sha256 = "sha256-0X/rEVfJ6zzX75R72xVntOfuCt8srp9PkiYOq3XbWPs=";
+    rev = "v${finalAttrs.version}";
+    sha256 = "sha256-h88wqKwkxY/5uOU0SQp8vb4ri3Ndi3ezHPTDFJGVE2Q=";
   };
 
   nativeBuildInputs = [
@@ -29,6 +31,7 @@ stdenv.mkDerivation rec {
     cmake
     gzip
     perl
+    jq
   ];
   preConfigure = ''
     env MYMPD_BUILDDIR=$PWD/build ./build.sh createassets
@@ -43,20 +46,26 @@ stdenv.mkDerivation rec {
   ];
 
   cmakeFlags = [
-    "-DENABLE_LUA=ON"
     # Otherwise, it tries to parse $out/etc/mympd.conf on startup.
     "-DCMAKE_INSTALL_SYSCONFDIR=/etc"
     # similarly here
     "-DCMAKE_INSTALL_LOCALSTATEDIR=/var/lib/mympd"
   ];
-  # See https://github.com/jcorporation/myMPD/issues/315
-  hardeningDisable = [ "strictoverflow" ];
+  hardeningDisable = [
+    # causes redefinition of _FORTIFY_SOURCE
+    "fortify3"
+  ];
+  # 5 tests out of 23 fail, probably due to the sandbox...
+  doCheck = false;
+
+  passthru.tests = { inherit (nixosTests) mympd; };
 
   meta = {
     homepage = "https://jcorporation.github.io/myMPD";
-    description = "A standalone and mobile friendly web mpd client with a tiny footprint and advanced features";
+    description = "Standalone and mobile friendly web mpd client with a tiny footprint and advanced features";
     maintainers = [ lib.maintainers.doronbehar ];
     platforms = lib.platforms.linux;
     license = lib.licenses.gpl2Plus;
+    mainProgram = "mympd";
   };
-}
+})

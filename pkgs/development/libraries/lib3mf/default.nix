@@ -12,6 +12,8 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-WMTTYYgpCIM86a6Jw8iah/YVXN9T5youzEieWL/d+Bc=";
   };
 
+  patches = [ ./upgrade-to-cpp-14.patch ];
+
   nativeBuildInputs = [ cmake ninja pkg-config ];
 
   outputs = [ "out" "dev" ];
@@ -26,12 +28,15 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     libzip gtest openssl
-  ] ++ (if stdenv.isDarwin then [ libossp_uuid ] else [ libuuid ]);
+  ] ++ (if stdenv.hostPlatform.isDarwin then [ libossp_uuid ] else [ libuuid ]);
 
   postPatch = ''
+    # This lets us build the tests properly on aarch64-darwin.
+    substituteInPlace CMakeLists.txt \
+      --replace 'SET(CMAKE_OSX_ARCHITECTURES "x86_64")' ""
+
     # fix libdir=''${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
     sed -i 's,libdir=''${\(exec_\)\?prefix}/,libdir=,' lib3mf.pc.in
-
 
     # replace bundled binaries
     for i in AutomaticComponentToolkit/bin/act.*; do

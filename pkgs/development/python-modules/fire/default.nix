@@ -1,19 +1,21 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, six
-, hypothesis
-, mock
-, levenshtein
-, pytestCheckHook
-, termcolor
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  setuptools,
+  six,
+  hypothesis,
+  mock,
+  levenshtein,
+  pytestCheckHook,
+  termcolor,
+  pythonOlder,
 }:
 
 buildPythonPackage rec {
   pname = "fire";
-  version = "0.5.0";
-  format = "setuptools";
+  version = "0.7.0";
+  pyproject = true;
 
   disabled = pythonOlder "3.7";
 
@@ -21,10 +23,12 @@ buildPythonPackage rec {
     owner = "google";
     repo = "python-fire";
     rev = "refs/tags/v${version}";
-    hash = "sha256-cwY1RRNtpAn6LnBASQLTNf4XXSPnfhOa1WgglGEM2/s=";
+    hash = "sha256-cYlkMnZOa0J6dOiWsWZplk/MajVRiCYe8tK3641fD0w=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  dependencies = [
     six
     termcolor
   ];
@@ -36,12 +40,10 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "fire"
-  ];
+  pythonImportsCheck = [ "fire" ];
 
   meta = with lib; {
-    description = "A library for automatically generating command line interfaces";
+    description = "Library for automatically generating command line interfaces";
     longDescription = ''
       Python Fire is a library for automatically generating command line
       interfaces (CLIs) from absolutely any Python object.

@@ -1,20 +1,22 @@
-{ stdenvNoCC, lib, fetchFromGitHub }:
+{ stdenvNoCC, lib, fetchFromGitHub, nixosTests }:
 
 stdenvNoCC.mkDerivation rec {
   pname = "icingaweb2-ipl";
-  version = "0.10.1";
+  version = "0.14.1";
 
   src = fetchFromGitHub {
     owner = "Icinga";
     repo = "icinga-php-library";
     rev = "v${version}";
-    hash = "sha256-zeKI8D9anPYYvNTNyl1Ej9NT7eoM4KgX5Oto783kYoI=";
+    hash = "sha256-TR2hd8TdWA2zSyalxBaqqdcK6FO2CovqddF8mvvyb1U=";
   };
 
   installPhase = ''
     mkdir -p "$out"
     cp -r * "$out"
   '';
+
+  passthru.tests = { inherit (nixosTests) icingaweb2; };
 
   meta = {
     description = "PHP library package for Icingaweb 2";

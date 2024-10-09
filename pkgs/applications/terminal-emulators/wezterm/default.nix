@@ -22,52 +22,53 @@
 , CoreGraphics
 , Cocoa
 , Foundation
+, System
 , libiconv
 , UserNotifications
 , nixosTests
 , runCommand
+, vulkan-loader
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "wezterm";
-  version = "20221119-145034-49b9839f";
+  version = "20240203-110809-5046fc22";
 
   src = fetchFromGitHub {
     owner = "wez";
     repo = pname;
     rev = version;
     fetchSubmodules = true;
-    sha256 = "sha256-1gnP2Dn4nkhxelUsXMay2VGvgvMjkdEKhFK5AAST++s=";
+    hash = "sha256-Az+HlnK/lRJpUSGm5UKyma1l2PaBKNCGFiaYnLECMX8=";
   };
 
-  # Rust 1.65 does better at enum packing (according to
-  # 40e08fafe2f6e5b0c70d55996a0814d6813442ef), but Nixpkgs doesn't have 1.65
-  # yet (still in staging), so skip these tests for now.
-  checkFlags = [
-    "--skip=escape::action_size"
-    "--skip=surface::line::storage::test::memory_usage"
-  ];
-
   postPatch = ''
+    cp ${./Cargo.lock} Cargo.lock
+
     echo ${version} > .tag
 
     # tests are failing with: Unable to exchange encryption keys
     rm -r wezterm-ssh/tests
   '';
 
-  cargoSha256 = "sha256-D6/biuLsXaCr0KSiopo9BuAVmniF8opAfDH71C3dtt0=";
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "xcb-imdkit-0.3.0" = "sha256-fTpJ6uNhjmCWv7dZqVgYuS2Uic36XNYTbqlaly5QBjI=";
+    };
+  };
 
   nativeBuildInputs = [
     installShellFiles
     ncurses # tic for terminfo
     pkg-config
     python3
-  ] ++ lib.optional stdenv.isDarwin perl;
+  ] ++ lib.optional stdenv.hostPlatform.isDarwin perl;
 
   buildInputs = [
     fontconfig
     zlib
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     libX11
     libxcb
     libxkbcommon
@@ -77,15 +78,18 @@ rustPlatform.buildRustPackage rec {
     xcbutilimage
     xcbutilkeysyms
     xcbutilwm # contains xcb-ewmh among others
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     Cocoa
     CoreGraphics
     Foundation
     libiconv
+    System
     UserNotifications
   ];
 
   buildFeatures = [ "distro-defaults" ];
+
+  env.NIX_LDFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-framework System";
 
   postInstall = ''
     mkdir -p $out/nix-support
@@ -104,9 +108,12 @@ rustPlatform.buildRustPackage rec {
     install -Dm644 assets/wezterm-nautilus.py -t $out/share/nautilus-python/extensions
   '';
 
-  preFixup = lib.optionalString stdenv.isLinux ''
-    patchelf --add-needed "${libGL}/lib/libEGL.so.1" $out/bin/wezterm-gui
-  '' + lib.optionalString stdenv.isDarwin ''
+  preFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
+    patchelf \
+      --add-needed "${libGL}/lib/libEGL.so.1" \
+      --add-needed "${vulkan-loader}/lib/libvulkan.so.1" \
+      $out/bin/wezterm-gui
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     mkdir -p "$out/Applications"
     OUT_APP="$out/Applications/WezTerm.app"
     cp -r assets/macos/WezTerm.app "$OUT_APP"
@@ -118,13 +125,12 @@ rustPlatform.buildRustPackage rec {
   passthru = {
     tests = {
       all-terminfo = nixosTests.allTerminfo;
-      terminal-emulators = nixosTests.terminal-emulators.wezterm;
+      # the test is commented out in nixos/tests/terminal-emulators.nix
+      #terminal-emulators = nixosTests.terminal-emulators.wezterm;
     };
     terminfo = runCommand "wezterm-terminfo"
       {
-        nativeBuildInputs = [
-          ncurses
-        ];
+        nativeBuildInputs = [ ncurses ];
       } ''
       mkdir -p $out/share/terminfo $out/nix-support
       tic -x -o $out/share/terminfo ${src}/termwiz/data/wezterm.terminfo
@@ -132,10 +138,10 @@ rustPlatform.buildRustPackage rec {
   };
 
   meta = with lib; {
-    description = "A GPU-accelerated cross-platform terminal emulator and multiplexer written by @wez and implemented in Rust";
+    description = "GPU-accelerated cross-platform terminal emulator and multiplexer written by @wez and implemented in Rust";
     homepage = "https://wezfurlong.org/wezterm";
     license = licenses.mit;
-    maintainers = with maintainers; [ SuperSandro2000 ];
-    platforms = platforms.unix;
+    mainProgram = "wezterm";
+    maintainers = with maintainers; [ SuperSandro2000 mimame ];
   };
 }

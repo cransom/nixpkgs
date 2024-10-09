@@ -2,19 +2,19 @@
 
 stdenv.mkDerivation rec {
   pname = "afuse";
-  version = "0.4.1";
+  version = "0.5.0";
 
   src = fetchFromGitHub {
     owner = "pcarrier";
     repo = "afuse";
     rev = "v${version}";
-    sha256 = "06i855h8a1w2jfly2gfy7vwhb2fp74yxbf3r69s28lki2kzwjar6";
+    sha256 = "sha256-KpysJRvDx+12BSl9pIGRqbJAM4W1NbzxMgDycGCr2RM=";
   };
 
   nativeBuildInputs = [ autoreconfHook pkg-config ];
   buildInputs = [ fuse ];
 
-  postPatch = lib.optionalString stdenv.isDarwin ''
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
     # Fix the build on macOS with macFUSE installed
     substituteInPlace configure.ac --replace \
       'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH' \
@@ -24,7 +24,7 @@ stdenv.mkDerivation rec {
   meta = {
     description = "Automounter in userspace";
     homepage = "https://github.com/pcarrier/afuse";
-    license = lib.licenses.gpl2;
+    license = lib.licenses.gpl2Only;
     maintainers = [ lib.maintainers.marcweber ];
     platforms = lib.platforms.unix;
   };

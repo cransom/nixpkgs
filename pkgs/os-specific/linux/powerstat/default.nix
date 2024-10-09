@@ -2,13 +2,13 @@
 
 stdenv.mkDerivation rec {
   pname = "powerstat";
-  version = "0.03.00";
+  version = "0.04.03";
 
   src = fetchFromGitHub {
     owner = "ColinIanKing";
     repo = pname;
     rev = "V${version}";
-    hash = "sha256-eiFzWKY4LrudfjMKDk4clmvCqYOGvWFokn6jEryMYBo=";
+    hash = "sha256-Y9djoy2RaEe4j+1g+9Q2MxEpVzPMA8oyJ92hlQm3Lqg=";
   };
 
   installFlags = [
@@ -19,8 +19,9 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "Laptop power measuring tool";
+    mainProgram = "powerstat";
     homepage = "https://github.com/ColinIanKing/powerstat";
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     platforms = platforms.linux;
     maintainers = with maintainers; [ womfoo ];
   };

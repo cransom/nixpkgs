@@ -54,5 +54,6 @@ stdenv.mkDerivation rec {
     license = with licenses; [ cc-by-sa-40 ];
     maintainers = with maintainers; [ cransom ];
     platforms = platforms.unix;
+    mainProgram = "blink1-tool";
   };
 }

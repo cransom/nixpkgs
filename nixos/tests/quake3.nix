@@ -1,4 +1,4 @@
-import ./make-test-python.nix ({ pkgs, ...} :
+import ./make-test-python.nix ({ pkgs, lib, ...} :
 
 let
 
@@ -11,17 +11,17 @@ let
     };
 
   # Only allow the demo data to be used (only if it's unfreeRedistributable).
-  unfreePredicate = pkg: with pkgs.lib; let
+  unfreePredicate = pkg: let
     allowPackageNames = [ "quake3-demodata" "quake3-pointrelease" ];
-    allowLicenses = [ pkgs.lib.licenses.unfreeRedistributable ];
-  in elem pkg.pname allowPackageNames &&
-     elem (pkg.meta.license or null) allowLicenses;
+    allowLicenses = [ lib.licenses.unfreeRedistributable ];
+  in lib.elem pkg.pname allowPackageNames &&
+     lib.elem (pkg.meta.license or null) allowLicenses;
 
   client =
     { pkgs, ... }:
 
     { imports = [ ./common/x11.nix ];
-      hardware.opengl.driSupport = true;
+      hardware.graphics.enable = true;
       environment.systemPackages = [ pkgs.quake3demo ];
       nixpkgs.config.packageOverrides = overrides;
       nixpkgs.config.allowUnfreePredicate = unfreePredicate;
@@ -31,8 +31,8 @@ in
 
 rec {
   name = "quake3";
-  meta = with pkgs.stdenv.lib.maintainers; {
-    maintainers = [ domenkozar eelco ];
+  meta = with lib.maintainers; {
+    maintainers = [ domenkozar ];
   };
 
   # TODO: lcov doesn't work atm
@@ -65,8 +65,8 @@ rec {
       client1.wait_for_x()
       client2.wait_for_x()
 
-      client1.execute("quake3 +set r_fullscreen 0 +set name Foo +connect server &")
-      client2.execute("quake3 +set r_fullscreen 0 +set name Bar +connect server &")
+      client1.execute("quake3 +set r_fullscreen 0 +set name Foo +connect server >&2 &", check_return = False)
+      client2.execute("quake3 +set r_fullscreen 0 +set name Bar +connect server >&2 &", check_return = False)
 
       server.wait_until_succeeds("grep -q 'Foo.*entered the game' /tmp/log")
       server.wait_until_succeeds("grep -q 'Bar.*entered the game' /tmp/log")

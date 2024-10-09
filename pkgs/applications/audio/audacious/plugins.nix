@@ -1,5 +1,5 @@
 { stdenv
-, fetchurl
+, fetchFromGitHub
 , alsa-lib
 , audacious
 , curl
@@ -8,7 +8,6 @@
 , flac
 , fluidsynth
 , gdk-pixbuf
-, gettext
 , lame
 , libbs2b
 , libcddb
@@ -35,26 +34,30 @@
 , neon
 , ninja
 , pkg-config
+, opusfile
+, pipewire
 , qtbase
 , qtmultimedia
-, qtx11extras
+, qtwayland
 , soxr
+, vgmstream
 , wavpack
 }:
 
 stdenv.mkDerivation rec {
   pname = "audacious-plugins";
-  version = "4.2";
+  version = "4.4.1";
 
-  src = fetchurl {
-    url = "http://distfiles.audacious-media-player.org/audacious-plugins-${version}.tar.bz2";
-    sha256 = "sha256-b6D2nDoQQeuHfDcQlROrSioKVqd9nowToVgc8UOaQX8=";
+  src = fetchFromGitHub {
+    owner = "audacious-media-player";
+    repo = "audacious-plugins";
+    rev = "${pname}-${version}";
+    hash = "sha256-F2kcGc6VCaBsL5Zx7qtZjPvqzaxmR87Q9LTFEU+nqmo=";
   };
 
   patches = [ ./0001-Set-plugindir-to-PREFIX-lib-audacious.patch ];
 
   nativeBuildInputs = [
-    gettext
     meson
     ninja
     pkg-config
@@ -91,9 +94,11 @@ stdenv.mkDerivation rec {
     lirc
     mpg123
     neon
+    opusfile
+    pipewire
     qtbase
     qtmultimedia
-    qtx11extras
+    qtwayland
     soxr
     wavpack
     libopenmpt
@@ -105,7 +110,12 @@ stdenv.mkDerivation rec {
 
   dontWrapQtApps = true;
 
+  postInstall = ''
+    ln -s ${vgmstream.override { buildAudaciousPlugin = true; }}/lib/audacious/Input/* $out/lib/audacious/Input
+  '';
+
   meta = audacious.meta // {
     description = "Plugins for Audacious music player";
+    downloadPage = "https://github.com/audacious-media-player/audacious-plugins";
   };
 }

@@ -1,7 +1,6 @@
 { lib, stdenv
 , fetchFromGitHub
 , fetchurl
-, fetchpatch
 , scons
 , pkg-config
 , SDL2
@@ -11,6 +10,7 @@
 , libGL
 , libpng
 , physfs
+, unstableGitUpdater
 }:
 
 let
@@ -22,13 +22,13 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "dxx-rebirth";
-  version = "unstable-2022-09-17";
+  version = "0.60.0-beta2-unstable-2024-08-11";
 
   src = fetchFromGitHub {
     owner = "dxx-rebirth";
     repo = "dxx-rebirth";
-    rev = "ad46235b67a24a38dec4734f94a59eba149ad94a";
-    hash = "sha256-vIAY1O4VnOsV617J5yjg09JIL/vK4Fb/lopnX17g+uY=";
+    rev = "bd3c033bdf1faa4606086dcae0436531fb2e7e5c";
+    hash = "sha256-imNHJ55Wp3YueMsNVvb7Z51EyESZnPdtzAOp2TWfdqc=";
   };
 
   nativeBuildInputs = [ pkg-config scons ];
@@ -39,7 +39,7 @@ stdenv.mkDerivation rec {
 
   sconsFlags = [ "sdl2=1" ];
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
     "-Wno-format-nonliteral"
     "-Wno-format-truncation"
   ];
@@ -48,6 +48,8 @@ stdenv.mkDerivation rec {
     install -Dm644 ${music} $out/share/games/dxx-rebirth/${music.name}
     install -Dm644 -t $out/share/doc/dxx-rebirth *.txt
   '';
+
+  passthru.updateScript = unstableGitUpdater {};
 
   meta = with lib; {
     description = "Source Port of the Descent 1 and 2 engines";

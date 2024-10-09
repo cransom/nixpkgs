@@ -10,7 +10,9 @@
     appendShort = lib.optionalString ((builtins.match "[a-f0-9]*" rev) != null) "-${short}";
   in "${if matched == null then base else builtins.head matched}${appendShort}";
 in
-{ url, rev ? "HEAD", md5 ? "", sha256 ? "", hash ? "", leaveDotGit ? deepClone
+lib.makeOverridable (lib.fetchers.withNormalizedHash { } (
+{ url, rev ? "HEAD", leaveDotGit ? deepClone
+, outputHash ? lib.fakeHash, outputHashAlgo ? null
 , fetchSubmodules ? true, deepClone ? false
 , branchName ? null
 , sparseCheckout ? []
@@ -53,37 +55,27 @@ in
 */
 
 assert deepClone -> leaveDotGit;
-assert nonConeMode -> !(sparseCheckout == "" || sparseCheckout == []);
+assert nonConeMode -> (sparseCheckout != []);
 
-if md5 != "" then
-  throw "fetchgit does not support md5 anymore, please use sha256"
-else if hash != "" && sha256 != "" then
-  throw "Only one of sha256 or hash can be set"
+if builtins.isString sparseCheckout then
+  # Changed to throw on 2023-06-04
+  throw "Please provide directories/patterns for sparse checkout as a list of strings. Passing a (multi-line) string is not supported any more."
 else
-# Added 2022-11-12
-lib.warnIf (builtins.isString sparseCheckout)
-  "Please provide directories/patterns for sparse checkout as a list of strings. Support for passing a (multi-line) string is deprecated and will be removed in the next release."
 stdenvNoCC.mkDerivation {
   inherit name;
   builder = ./builder.sh;
-  fetcher = ./nix-prefetch-git;  # This must be a string to ensure it's called with bash.
+  fetcher = ./nix-prefetch-git;
 
-  nativeBuildInputs = [ git ]
+  nativeBuildInputs = [ git cacert ]
     ++ lib.optionals fetchLFS [ git-lfs ];
 
-  outputHashAlgo = if hash != "" then null else "sha256";
+  inherit outputHash outputHashAlgo;
   outputHashMode = "recursive";
-  outputHash = if hash != "" then
-    hash
-  else if sha256 != "" then
-    sha256
-  else
-    lib.fakeSha256;
 
   # git-sparse-checkout(1) says:
   # > When the --stdin option is provided, the directories or patterns are read
   # > from standard in as a newline-delimited list instead of from the arguments.
-  sparseCheckout = if builtins.isString sparseCheckout then sparseCheckout else builtins.concatStringsSep "\n" sparseCheckout;
+  sparseCheckout = builtins.concatStringsSep "\n" sparseCheckout;
 
   inherit url rev leaveDotGit fetchLFS fetchSubmodules deepClone branchName nonConeMode postFetch;
 
@@ -91,10 +83,9 @@ stdenvNoCC.mkDerivation {
     ${netrcPhase}
     # required that git uses the netrc file
     mv {,.}netrc
+    export NETRC=$PWD/.netrc
     export HOME=$PWD
   '';
-
-  GIT_SSL_CAINFO = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 
   impureEnvVars = lib.fetchers.proxyImpureEnvVars ++ netrcImpureEnvVars ++ [
     "GIT_PROXY_COMMAND" "NIX_GIT_SSL_CAINFO" "SOCKS_SERVER"
@@ -107,3 +98,4 @@ stdenvNoCC.mkDerivation {
     gitRepoUrl = url;
   };
 }
+))

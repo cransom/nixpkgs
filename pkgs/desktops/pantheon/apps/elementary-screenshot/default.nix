@@ -6,25 +6,24 @@
 , meson
 , ninja
 , vala
-, python3
 , desktop-file-utils
 , gtk3
 , granite
 , libgee
 , libhandy
 , libcanberra
-, wrapGAppsHook
+, wrapGAppsHook3
 }:
 
 stdenv.mkDerivation rec {
   pname = "elementary-screenshot";
-  version = "6.0.3";
+  version = "8.0.0";
 
   src = fetchFromGitHub {
     owner = "elementary";
     repo = "screenshot";
     rev = version;
-    sha256 = "sha256-7BrowiMUDcf0raeOEFen2V3nenymgE6Rg5a3RilMQaI=";
+    sha256 = "sha256-z7FP+OZYF/9YLXYCQF/ElihKjKHVfeHc38RHdPb2aIE=";
   };
 
   nativeBuildInputs = [
@@ -32,9 +31,8 @@ stdenv.mkDerivation rec {
     meson
     ninja
     pkg-config
-    python3
     vala
-    wrapGAppsHook
+    wrapGAppsHook3
   ];
 
   buildInputs = [
@@ -44,11 +42,6 @@ stdenv.mkDerivation rec {
     libgee
     libhandy
   ];
-
-  postPatch = ''
-    chmod +x meson/post_install.py
-    patchShebangs meson/post_install.py
-  '';
 
   passthru = {
     updateScript = nix-update-script { };

@@ -6,16 +6,19 @@
 , dbus
 , dejavu_fonts
 , fetchurl
+, fetchpatch
 , fontconfig
 , gawk
 , ghostscript
 , gnugrep
 , gnused
 , ijs
+, libexif
 , libjpeg
 , liblouis
 , libpng
 , makeWrapper
+, autoreconfHook
 , mupdf
 , perl
 , pkg-config
@@ -33,14 +36,32 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "cups-filters";
-  version = "1.28.15";
+  version = "1.28.17";
 
   src = fetchurl {
-    url = "https://openprinting.org/download/cups-filters/${pname}-${version}.tar.xz";
-    sha256 = "sha256-qQfsdp+7cu+/v5tUCyUKCOM7bjc6inw0P5hA+6TQR4s=";
+    url = "https://github.com/OpenPrinting/cups-filters/releases/download/${version}/${pname}-${version}.tar.xz";
+    hash = "sha256-Jwo3UqlgNoqpnUMftdNPQDmyrJQ8V22EBhLR2Bhcm7k=";
   };
 
-  nativeBuildInputs = [ pkg-config makeWrapper ];
+  patches = [
+    (fetchpatch {
+      name = "CVE-2023-24805.patch";
+      url = "https://github.com/OpenPrinting/cups-filters/commit/93e60d3df358c0ae6f3dba79e1c9684657683d89.patch";
+      hash = "sha256-KgWTYFr2uShL040azzE+KaNyBPy7Gs/hCnEgQmmPCys=";
+    })
+    (fetchpatch {
+      name = "CVE-2024-47076.patch";
+      url = "https://github.com/OpenPrinting/libcupsfilters/commit/95576ec3d20c109332d14672a807353cdc551018.patch";
+      hash = "sha256-MXWllrdWt8n7zqvumQNg34dBgWMwMTwf9lrD+ZZP8Wk=";
+    })
+    (fetchpatch {
+      name = "remove-cups-ldap-browse-protocols_CVE-2024-47176_CVE-2024-47850.patch";
+      url = "https://github.com/OpenPrinting/cups-filters/commit/6fd2bdfbdce76149af531ce9fca9062304238451.patch";
+      hash = "sha256-XS1ODy7i7ilgEjsKuEvOUiRN9pqsj+bOktKoshKcg8Q=";
+    })
+  ];
+
+  nativeBuildInputs = [ pkg-config makeWrapper autoreconfHook ];
 
   buildInputs = [
     cups
@@ -48,6 +69,7 @@ stdenv.mkDerivation rec {
     fontconfig
     ghostscript
     ijs
+    libexif
     libjpeg
     liblouis # braille embosser support
     libpng
@@ -74,6 +96,9 @@ stdenv.mkDerivation rec {
   ] ++ lib.optionals (!withAvahi) [ "--disable-avahi" ];
 
   makeFlags = [ "CUPS_SERVERBIN=$(out)/lib/cups" "CUPS_DATADIR=$(out)/share/cups" "CUPS_SERVERROOT=$(out)/etc/cups" ];
+
+  # https://github.com/OpenPrinting/cups-filters/issues/512
+  env.NIX_CFLAGS_COMPILE = "-std=c++17";
 
   postConfigure =
     ''
@@ -102,7 +127,7 @@ stdenv.mkDerivation rec {
   meta = {
     homepage = "http://www.linuxfoundation.org/collaborate/workgroups/openprinting/cups-filters";
     description = "Backends, filters, and other software that was once part of the core CUPS distribution but is no longer maintained by Apple Inc";
-    license = lib.licenses.gpl2;
+    license = lib.licenses.gpl2Plus;
     platforms = lib.platforms.linux;
   };
 }

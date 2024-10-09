@@ -4,6 +4,7 @@
 , bison
 , pam
 , libxcrypt
+, nixosTests
 
 , withPAM ? true
 , withTimestamp ? true
@@ -32,12 +33,10 @@ stdenv.mkDerivation rec {
     # Allow doas to discover binaries in /run/current-system/sw/{s,}bin and
     # /run/wrappers/bin
     ./0001-add-NixOS-specific-dirs-to-safe-PATH.patch
-
-    # Standard environment supports "dontDisableStatic" knob, but has no
-    # equivalent for "--disable-shared", so I have to patch "configure"
-    # script instead.
-    ./disable-shared.patch
   ];
+
+  # ./configure script does not understand `--disable-shared`
+  dontAddStaticConfigureFlags = true;
 
   postPatch = ''
     sed -i '/\(chown\|chmod\)/d' GNUmakefile
@@ -50,11 +49,14 @@ stdenv.mkDerivation rec {
     ++ lib.optional withPAM pam
     ++ lib.optional (!withPAM) libxcrypt;
 
+  passthru.tests = { inherit (nixosTests) doas; };
+
   meta = with lib; {
     description = "Executes the given command as another user";
+    mainProgram = "doas";
     homepage = "https://github.com/Duncaen/OpenDoas";
     license = licenses.isc;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ cole-h cstrahan ];
+    maintainers = with maintainers; [ cole-h ];
   };
 }

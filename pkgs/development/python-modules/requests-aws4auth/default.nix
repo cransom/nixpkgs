@@ -1,46 +1,39 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, httpx
-, pytestCheckHook
-, python
-, pythonOlder
-, requests
-, six
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  httpx,
+  pytestCheckHook,
+  pythonOlder,
+  requests,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "requests-aws4auth";
-  version = "1.2.2";
-  format = "setuptools";
+  version = "1.3.1";
+  pyproject = true;
 
   disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "tedder";
-    repo = pname;
+    repo = "requests-aws4auth";
     rev = "refs/tags/v${version}";
-    hash = "sha256-RbaRFMyvK3y7xN+xwNi/lHJjx+xIlpfizJj9BIn6cT4=";
+    hash = "sha256-tRo38fdWqZmutGhWv8Hks+oFaLv770RlAHYgS3S6xJA=";
   };
 
-  propagatedBuildInputs = [
-    requests
-    six
-  ];
+  build-system = [ setuptools ];
 
-  passthru.optional-dependencies = {
-    httpx = [
-      httpx
-    ];
+  dependencies = [ requests ];
+
+  optional-dependencies = {
+    httpx = [ httpx ];
   };
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ] ++ passthru.optional-dependencies.httpx;
+  nativeCheckInputs = [ pytestCheckHook ] ++ optional-dependencies.httpx;
 
-  pythonImportsCheck = [
-    "requests_aws4auth"
-  ];
+  pythonImportsCheck = [ "requests_aws4auth" ];
 
   meta = with lib; {
     description = "Amazon Web Services version 4 authentication for the Python Requests library";

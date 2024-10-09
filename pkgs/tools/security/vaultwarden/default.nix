@@ -1,6 +1,6 @@
-{ lib, stdenv, callPackage, rustPlatform, fetchFromGitHub, fetchurl, nixosTests
+{ lib, stdenv, callPackage, rustPlatform, fetchFromGitHub, nixosTests
 , pkg-config, openssl
-, libiconv, Security, CoreServices
+, libiconv, Security, CoreServices, SystemConfiguration
 , dbBackend ? "sqlite", libmysqlclient, postgresql }:
 
 let
@@ -9,26 +9,25 @@ in
 
 rustPlatform.buildRustPackage rec {
   pname = "vaultwarden";
-  version = "1.27.0";
+  version = "1.32.1";
 
   src = fetchFromGitHub {
     owner = "dani-garcia";
-    repo = pname;
+    repo = "vaultwarden";
     rev = version;
-    hash = "sha256-QvU1Y3syr6PZbTRebbZF4sEzI4lIj1enJe2F/gGfvQM=";
+    hash = "sha256-bjLa3/B+H49BHXU9xYAtoSsaJBtDJIm6+coGEplzxdM=";
   };
 
-  cargoHash = "sha256-lylRGg5pzJ4sBS3bY4ObMoJ5s5kakMLTtq1VOnmS5HM";
+  cargoHash = "sha256-3JfdgGHhj2Fva9BB5vNYDX1eHk2EZl/7f6AeLRqkaGQ=";
+
+  # used for "Server Installed" version in admin panel
+  env.VW_VERSION = version;
 
   nativeBuildInputs = [ pkg-config ];
-  buildInputs = with lib; [ openssl ]
-    ++ optionals stdenv.isDarwin [ libiconv Security CoreServices ]
-    ++ optional (dbBackend == "mysql") libmysqlclient
-    ++ optional (dbBackend == "postgresql") postgresql;
-
-  # vaultwarden depends on rocket v0.5.0-dev, which requires nightly features.
-  # This may be removed if https://github.com/dani-garcia/vaultwarden/issues/712 is fixed.
-  RUSTC_BOOTSTRAP = 1;
+  buildInputs = [ openssl ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ libiconv Security CoreServices SystemConfiguration ]
+    ++ lib.optional (dbBackend == "mysql") libmysqlclient
+    ++ lib.optional (dbBackend == "postgresql") postgresql;
 
   buildFeatures = dbBackend;
 
@@ -41,7 +40,9 @@ rustPlatform.buildRustPackage rec {
   meta = with lib; {
     description = "Unofficial Bitwarden compatible server written in Rust";
     homepage = "https://github.com/dani-garcia/vaultwarden";
-    license = licenses.gpl3Only;
-    maintainers = with maintainers; [ msteen ivan ];
+    changelog = "https://github.com/dani-garcia/vaultwarden/releases/tag/${version}";
+    license = licenses.agpl3Only;
+    maintainers = with maintainers; [ dotlambda SuperSandro2000 ];
+    mainProgram = "vaultwarden";
   };
 }

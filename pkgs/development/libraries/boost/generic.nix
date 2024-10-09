@@ -1,4 +1,6 @@
-{ lib, stdenv, icu, expat, zlib, bzip2, python ? null, fixDarwinDylibNames, libiconv, libxcrypt
+{ lib, stdenv, icu, expat, zlib, bzip2, zstd, xz, python ? null, fixDarwinDylibNames, libiconv, libxcrypt
+, makePkgconfigItem
+, copyPkgconfigItems
 , boost-build
 , fetchpatch
 , which
@@ -9,7 +11,7 @@
 , enableDebug ? false
 , enableSingleThreaded ? false
 , enableMultiThreaded ? true
-, enableShared ? !(with stdenv.hostPlatform; isStatic || libc == "msvcrt") # problems for now
+, enableShared ? !(with stdenv.hostPlatform; isStatic || isMinGW) # problems for now
 , enableStatic ? !enableShared
 , enablePython ? false
 , enableNumpy ? false
@@ -31,9 +33,6 @@ assert enableShared || enableStatic;
 
 assert enableNumpy -> enablePython;
 
-# Boost <1.69 can't be built on linux with clang >8, because pth was removed
-assert with lib; (stdenv.isLinux && toolset == "clang" && versionAtLeast stdenv.cc.version "8.0.0") -> versionAtLeast version "1.69";
-
 let
 
   variant = lib.concatStringsSep ","
@@ -53,26 +52,12 @@ let
   # To avoid library name collisions
   layout = if taggedLayout then "tagged" else "system";
 
-  # Versions of b2 before 1.65 have job limits; specifically:
-  #   - Versions before 1.58 support up to 64 jobs[0]
-  #   - Versions before 1.65 support up to 256 jobs[1]
-  #
-  # [0]: https://github.com/boostorg/build/commit/0ef40cb86728f1cd804830fef89a6d39153ff632
-  # [1]: https://github.com/boostorg/build/commit/316e26ca718afc65d6170029284521392524e4f8
-  jobs =
-    if lib.versionOlder version "1.58" then
-      "$(($NIX_BUILD_CORES<=64 ? $NIX_BUILD_CORES : 64))"
-    else if lib.versionOlder version "1.65" then
-      "$(($NIX_BUILD_CORES<=256 ? $NIX_BUILD_CORES : 256))"
-    else
-      "$NIX_BUILD_CORES";
-
-  needUserConfig = stdenv.hostPlatform != stdenv.buildPlatform || useMpi || (stdenv.isDarwin && enableShared);
+  needUserConfig = stdenv.hostPlatform != stdenv.buildPlatform || useMpi || (stdenv.hostPlatform.isDarwin && enableShared);
 
   b2Args = lib.concatStringsSep " " ([
     "--includedir=$dev/include"
     "--libdir=$out/lib"
-    "-j${jobs}"
+    "-j$NIX_BUILD_CORES"
     "--layout=${layout}"
     "variant=${variant}"
     "threading=${threading}"
@@ -87,9 +72,11 @@ let
     "address-model=${toString stdenv.hostPlatform.parsed.cpu.bits}"
     "architecture=${if stdenv.hostPlatform.isMips64
                     then if lib.versionOlder version "1.78" then "mips1" else "mips"
-                    else if stdenv.hostPlatform.parsed.cpu.name == "s390x" then "s390x"
+                    else if stdenv.hostPlatform.isS390 then "s390x"
                     else toString stdenv.hostPlatform.parsed.cpu.family}"
-    "binary-format=${toString stdenv.hostPlatform.parsed.kernel.execFormat.name}"
+    # env in host triplet for Mach-O is "macho", but boost binary format for Mach-O is "mach-o"
+    "binary-format=${if stdenv.hostPlatform.isMacho then "mach-o"
+                     else toString stdenv.hostPlatform.parsed.kernel.execFormat.name}"
     "target-os=${toString stdenv.hostPlatform.parsed.kernel.name}"
 
     # adapted from table in boost manual
@@ -105,7 +92,7 @@ let
     ++ lib.optional (!enablePython) "--without-python"
     ++ lib.optional needUserConfig "--user-config=user-config.jam"
     ++ lib.optional (stdenv.buildPlatform.isDarwin && stdenv.hostPlatform.isLinux) "pch=off"
-    ++ lib.optionals (stdenv.hostPlatform.libc == "msvcrt") [
+    ++ lib.optionals stdenv.hostPlatform.isMinGW [
     "threadapi=win32"
   ] ++ extraB2Args
   );
@@ -120,54 +107,62 @@ stdenv.mkDerivation {
   patchFlags = [];
 
   patches = patches
-  ++ lib.optional stdenv.isDarwin ./darwin-no-system-python.patch
-  # Fix boost-context segmentation faults on ppc64 due to ABI violation
-  ++ lib.optional (lib.versionAtLeast version "1.61" &&
-               lib.versionOlder version "1.71") (fetchpatch {
-    url = "https://github.com/boostorg/context/commit/2354eca9b776a6739112833f64754108cc0d1dc5.patch";
-    sha256 = "067m4bjpmcanqvg28djax9a10avmdwhlpfx6gn73kbqqq70dnz29";
-    stripLen = 1;
-    extraPrefix = "libs/context/";
-  })
-  # Fix compiler warning with GCC >= 8; TODO: patch may apply to older versions
-  ++ lib.optional (lib.versionAtLeast version "1.65" && lib.versionOlder version "1.67")
-    (fetchpatch {
-      url = "https://github.com/boostorg/mpl/commit/f48fd09d021db9a28bd7b8452c175897e1af4485.patch";
-      sha256 = "15d2a636hhsb1xdyp44x25dyqfcaws997vnp9kl1mhzvxjzz7hb0";
-      stripLen = 1;
-    })
-  ++ lib.optional (lib.versionAtLeast version "1.65" && lib.versionOlder version "1.70") (fetchpatch {
-    # support for Mips64n64 appeared in boost-context 1.70; this patch won't apply to pre-1.65 cleanly
-    url = "https://github.com/boostorg/context/commit/e3f744a1862164062d579d1972272d67bdaa9c39.patch";
-    sha256 = "sha256-qjQy1b4jDsIRrI+UYtcguhvChrMbGWO0UlEzEJHYzRI=";
-    stripLen = 1;
-    extraPrefix = "libs/context/";
-  })
-  ++ lib.optional (lib.versionAtLeast version "1.70" && lib.versionOlder version "1.73") ./cmake-paths.patch
-  ++ lib.optional (lib.versionAtLeast version "1.73") ./cmake-paths-173.patch
+  ++ lib.optional stdenv.hostPlatform.isDarwin ./darwin-no-system-python.patch
+  ++ [ ./cmake-paths-173.patch ]
   ++ lib.optional (version == "1.77.0") (fetchpatch {
     url = "https://github.com/boostorg/math/commit/7d482f6ebc356e6ec455ccb5f51a23971bf6ce5b.patch";
     relative = "include";
     sha256 = "sha256-KlmIbixcds6GyKYt1fx5BxDIrU7msrgDdYo9Va/KJR4=";
-  });
+  })
+  # Fixes ABI detection
+  ++ lib.optional (version == "1.83.0") (fetchpatch {
+    url = "https://github.com/boostorg/context/commit/6fa6d5c50d120e69b2d8a1c0d2256ee933e94b3b.patch";
+    stripLen = 1;
+    extraPrefix = "libs/context/";
+    sha256 = "sha256-bCfLL7bD1Rn4Ie/P3X+nIcgTkbXdCX6FW7B9lHsmVW8=";
+  })
+  # This fixes another issue regarding ill-formed constant expressions, which is a default error
+  # in clang 16 and will be a hard error in clang 17.
+  ++ lib.optional (lib.versionOlder version "1.80") (fetchpatch {
+    url = "https://github.com/boostorg/log/commit/77f1e20bd69c2e7a9e25e6a9818ae6105f7d070c.patch";
+    relative = "include";
+    hash = "sha256-6qOiGJASm33XzwoxVZfKJd7sTlQ5yd+MMFQzegXm5RI=";
+  })
+  ++ lib.optionals (lib.versionOlder version "1.81") [
+    # libc++ 15 dropped support for `std::unary_function` and `std::binary_function` in C++17+.
+    # C++17 is the default for clang 16, but clang 15 is also affected in that language mode.
+    # This patch is for Boost 1.80, but it also applies to earlier versions.
+    (fetchpatch {
+      url = "https://www.boost.org/patches/1_80_0/0005-config-libcpp15.patch";
+      hash = "sha256-ULFMzKphv70unvPZ3o4vSP/01/xbSM9a2TlIV67eXDQ=";
+    })
+    # This fixes another ill-formed contant expressions issue flagged by clang 16.
+    (fetchpatch {
+      url = "https://github.com/boostorg/numeric_conversion/commit/50a1eae942effb0a9b90724323ef8f2a67e7984a.patch";
+      relative = "include";
+      hash = "sha256-dq4SVgxkPJSC7Fvr59VGnXkM4Lb09kYDaBksCHo9C0s=";
+    })
+    # This fixes an issue in Python 3.11 about Py_TPFLAGS_HAVE_GC
+    (fetchpatch {
+      name = "python311-compatibility.patch";
+      url = "https://github.com/boostorg/python/commit/a218babc8daee904a83f550fb66e5cb3f1cb3013.patch";
+      hash = "sha256-IHxLtJBx0xSy7QEr8FbCPofsjcPuSYzgtPwDlx1JM+4=";
+      stripLen = 1;
+      extraPrefix = "libs/python/";
+    })
+  ]
+  ++ lib.optional (lib.versionAtLeast version "1.81" && stdenv.cc.isClang) ./fix-clang-target.patch;
 
   meta = with lib; {
     homepage = "http://boost.org/";
     description = "Collection of C++ libraries";
     license = licenses.boost;
     platforms = platforms.unix ++ platforms.windows;
-    badPlatforms = optional (versionOlder version "1.59") "aarch64-linux"
-                 ++ optional ((versionOlder version "1.57") || version == "1.58") "x86_64-darwin"
-                 ++ optionals (versionOlder version "1.73") lib.platforms.riscv;
+    # boost-context lacks support for the N32 ABI on mips64.  The build
+    # will succeed, but packages depending on boost-context will fail with
+    # a very cryptic error message.
+    badPlatforms = [ lib.systems.inspect.patterns.isMips64n32 ];
     maintainers = with maintainers; [ hjones2199 ];
-
-    broken =
-      # boost-context lacks support for the N32 ABI on mips64.  The build
-      # will succeed, but packages depending on boost-context will fail with
-      # a very cryptic error message.
-      stdenv.hostPlatform.isMips64n32 ||
-      # the patch above does not apply cleanly to pre-1.65 boost
-      (stdenv.hostPlatform.isMips64n64 && (versionOlder version "1.65"));
   };
 
   passthru = {
@@ -176,13 +171,13 @@ stdenv.mkDerivation {
 
   preConfigure = lib.optionalString useMpi ''
     cat << EOF >> user-config.jam
-    using mpi : ${mpi}/bin/mpiCC ;
+    using mpi : ${lib.getDev mpi}/bin/mpiCC ;
     EOF
   ''
   # On darwin we need to add the `$out/lib` to the libraries' rpath explicitly,
   # otherwise the dynamic linker is unable to resolve the reference to @rpath
   # when the boost libraries want to load each other at runtime.
-  + lib.optionalString (stdenv.isDarwin && enableShared) ''
+  + lib.optionalString (stdenv.hostPlatform.isDarwin && enableShared) ''
     cat << EOF >> user-config.jam
     using clang-darwin : : ${stdenv.cc.targetPrefix}c++
       : <linkflags>"-rpath $out/lib/"
@@ -218,14 +213,32 @@ stdenv.mkDerivation {
     EOF
   '';
 
-  NIX_CFLAGS_LINK = lib.optionalString stdenv.isDarwin
-                      "-headerpad_max_install_names";
+  env = {
+    NIX_CFLAGS_LINK = lib.optionalString stdenv.hostPlatform.isDarwin "-headerpad_max_install_names";
+    # copyPkgconfigItems will substitute these in the pkg-config file
+    includedir = "${placeholder "dev"}/include";
+    libdir = "${placeholder "out"}/lib";
+  };
+
+  pkgconfigItems = [
+    (makePkgconfigItem {
+      name = "boost";
+      inherit version;
+      # Exclude other variables not needed by meson
+      variables = {
+        includedir = "@includedir@";
+        libdir = "@libdir@";
+      };
+    })
+  ];
 
   enableParallelBuilding = true;
 
-  nativeBuildInputs = [ which boost-build ]
+  nativeBuildInputs = [ which boost-build copyPkgconfigItems ]
     ++ lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
   buildInputs = [ expat zlib bzip2 libiconv ]
+    ++ lib.optional (lib.versionAtLeast version "1.69") zstd
+    ++ [ xz ]
     ++ lib.optional enableIcu icu
     ++ lib.optionals enablePython [ libxcrypt python ]
     ++ lib.optional enableNumpy python.pkgs.numpy;
@@ -264,7 +277,7 @@ stdenv.mkDerivation {
     # Make boost header paths relative so that they are not runtime dependencies
     cd "$dev" && find include \( -name '*.hpp' -or -name '*.h' -or -name '*.ipp' \) \
       -exec sed '1s/^\xef\xbb\xbf//;1i#line 1 "{}"' -i '{}' \;
-  '' + lib.optionalString (stdenv.hostPlatform.libc == "msvcrt") ''
+  '' + lib.optionalString stdenv.hostPlatform.isMinGW ''
     $RANLIB "$out/lib/"*.a
   '';
 

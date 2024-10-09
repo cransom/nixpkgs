@@ -7,18 +7,18 @@
 
 buildGoModule rec {
   pname = "zlint";
-  version = "3.4.1";
+  version = "3.6.3";
 
   src = fetchFromGitHub {
     owner = "zmap";
     repo = "zlint";
-    rev = "v${version}";
-    hash = "sha256-edCZQeBZelDfZGBZgevvJ8fgm1G2QFILJKB3778D7ac=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-N199sSxe06nm0CInTYAuwRgoq7hN7IQpHz5ERUSpk3M=";
   };
 
   modRoot = "v3";
 
-  vendorHash = "sha256-OiHEyMHuSiWDB/1YRvAhErb1h/rFfXXVcagcP386doc=";
+  vendorHash = "sha256-RX7B9RyNmEO9grMR9Mqn1jXDH5sgT0QDvdhXgY1HYtQ=";
 
   postPatch = ''
     # Remove a package which is not declared in go.mod.
@@ -32,7 +32,7 @@ buildGoModule rec {
   ldflags = [
     "-s"
     "-w"
-    "-X main.version=${version}"
+    "-X=main.version=${version}"
   ];
 
   passthru.tests.version = testers.testVersion {
@@ -48,7 +48,7 @@ buildGoModule rec {
       requirements (e.g. CA/Browser Forum Baseline Requirements).
     '';
     homepage = "https://github.com/zmap/zlint";
-    changelog = "https://github.com/zmap/zlint/releases/tag/${src.rev}";
+    changelog = "https://github.com/zmap/zlint/releases/tag/${lib.removePrefix "refs/tags/" src.rev}";
     license = licenses.asl20;
     maintainers = with maintainers; [ baloo ];
   };

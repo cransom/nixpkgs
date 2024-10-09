@@ -1,46 +1,55 @@
-{ lib
-, stdenv
-, fetchurl
-, buildPythonPackage
-, fetchPypi
-, fetchFromGitHub
-, rustPlatform
-, pytestCheckHook
-, libiconv
-, numpy
-, pandas
-, pyarrow
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  rustPlatform,
+  pytestCheckHook,
+  libiconv,
+  numpy,
+  protobuf,
+  pyarrow,
+  Security,
+  SystemConfiguration,
+  typing-extensions,
+  pythonOlder,
 }:
 
 let
   arrow-testing = fetchFromGitHub {
+    name = "arrow-testing";
     owner = "apache";
     repo = "arrow-testing";
-    rev = "5bab2f264a23f5af68f69ea93d24ef1e8e77fc88";
-    hash = "sha256-Pxx8ohUpXb5u1995IvXmxQMqWiDJ+7LAll/AjQP7ph8=";
+    rev = "4d209492d514c2d3cb2d392681b9aa00e6d8da1c";
+    hash = "sha256-IkiCbuy0bWyClPZ4ZEdkEP7jFYLhM7RCuNLd6Lazd4o=";
   };
 
   parquet-testing = fetchFromGitHub {
+    name = "parquet-testing";
     owner = "apache";
     repo = "parquet-testing";
-    rev = "5b82793ef7196f7b3583e85669ced211cd8b5ff2";
-    hash = "sha256-gcOvk7qFHZgJWE9CpucC8zwayYw47VbC3lmSRu4JQFg=";
+    rev = "50af3d8ce206990d81014b1862e5ce7380dc3e08";
+    hash = "sha256-edyv/r5olkj09aHtm8LHZY0b3jUtLNUcufwI41qKYaY=";
   };
 in
 
 buildPythonPackage rec {
   pname = "datafusion";
-  version = "0.7.0";
-  format = "pyproject";
+  version = "40.1.0";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "sha256-XYXZMorPs2Ue7E38DASd4rmxvX0wlx8A6sCpAbYUh4I=";
+  src = fetchFromGitHub {
+    name = "datafusion-source";
+    owner = "apache";
+    repo = "arrow-datafusion-python";
+    rev = "refs/tags/${version}";
+    hash = "sha256-5WOSlx4XW9zO6oTY16lWQElShLv0ubflVPfSSEGrFgg=";
   };
 
   cargoDeps = rustPlatform.fetchCargoTarball {
-    inherit src pname version;
-    sha256 = "sha256-6mPdKwsEN09Gf4eNsd/v3EBHVezHmff/KYB2lsXgzcA=";
+    name = "datafusion-cargo-deps";
+    inherit src;
+    hash = "sha256-hN03tbnH77VsMDxSMddMHIH00t7lUs5h8rTHbiMIExw=";
   };
 
   nativeBuildInputs = with rustPlatform; [
@@ -48,17 +57,29 @@ buildPythonPackage rec {
     maturinBuildHook
   ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
+  buildInputs =
+    [ protobuf ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      libiconv
+      Security
+      SystemConfiguration
+    ];
 
-  propagatedBuildInputs = [
-    numpy
-    pandas
+  dependencies = [
     pyarrow
+  ] ++ lib.optionals (pythonOlder "3.13") [ typing-extensions ];
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    numpy
   ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
   pythonImportsCheck = [ "datafusion" ];
-  pytestFlagsArray = [ "--pyargs" pname ];
+
+  pytestFlagsArray = [
+    "--pyargs"
+    pname
+  ];
 
   preCheck = ''
     pushd $TMPDIR
@@ -77,6 +98,7 @@ buildPythonPackage rec {
       that uses Apache Arrow as its in-memory format.
     '';
     homepage = "https://arrow.apache.org/datafusion/";
+    changelog = "https://github.com/apache/arrow-datafusion-python/blob/${version}/CHANGELOG.md";
     license = with licenses; [ asl20 ];
     maintainers = with maintainers; [ cpcloud ];
   };

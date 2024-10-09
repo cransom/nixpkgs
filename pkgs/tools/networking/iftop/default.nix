@@ -11,7 +11,7 @@ stdenv.mkDerivation rec {
 
   # Explicitly link against libgcc_s, to work around the infamous
   # "libgcc_s.so.1 must be installed for pthread_cancel to work".
-  LDFLAGS = lib.optionalString stdenv.isLinux "-lgcc_s";
+  LDFLAGS = lib.optionalString stdenv.hostPlatform.isLinux "-lgcc_s";
 
   preConfigure = ''
     cp ${automake}/share/automake*/config.{sub,guess} config
@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
   # gcc-10. Otherwise build fails as:
   #   ld: tui.o:/build/iftop-1.0pre4/ui_common.h:41: multiple definition of `service_hash';
   #     iftop.o:/build/iftop-1.0pre4/ui_common.h:41: first defined here
-  NIX_CFLAGS_COMPILE = "-fcommon";
+  env.NIX_CFLAGS_COMPILE = "-fcommon";
 
   passthru.tests = { inherit (nixosTests) iftop; };
 
@@ -38,5 +38,6 @@ stdenv.mkDerivation rec {
     homepage = "http://ex-parrot.com/pdw/iftop/";
     platforms = platforms.unix;
     maintainers = [ ];
+    mainProgram = "iftop";
   };
 }

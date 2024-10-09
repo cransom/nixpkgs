@@ -2,20 +2,20 @@
 
 stdenv.mkDerivation rec {
   pname = "flare-engine";
-  version = "1.13.04";
+  version = "1.14";
 
   src = fetchFromGitHub {
     owner = "flareteam";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-GPHPYcW0kBDGpZti2kFggNB4RVK/3eQ53M9mJvJuKXM=";
+    hash = "sha256-DIzfTqwZJ8NAPB/TWzvPjepHb7hIbIr+Kk+doXJmpLc=";
   };
 
   patches = [ ./desktop.patch ];
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ SDL2 SDL2_image SDL2_mixer SDL2_ttf ]
-    ++ lib.optional stdenv.isDarwin Cocoa;
+    ++ lib.optional stdenv.hostPlatform.isDarwin Cocoa;
 
   meta = with lib; {
     description = "Free/Libre Action Roleplaying Engine";

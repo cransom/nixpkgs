@@ -5,20 +5,19 @@
 , IOKit
 , nvidiaSupport ? false
 , makeWrapper
-, llvmPackages
 }:
 
-assert nvidiaSupport -> stdenv.isLinux;
+assert nvidiaSupport -> stdenv.hostPlatform.isLinux;
 
 rustPlatform.buildRustPackage rec {
   pname = "zenith";
-  version = "0.13.1";
+  version = "0.14.1";
 
   src = fetchFromGitHub {
     owner = "bvaisvil";
-    repo = pname;
+    repo = "zenith";
     rev = version;
-    sha256 = "sha256-N/DvPVYGM/DjTvKvOlR60q6rvNyfAQlnvFnFG5nbUmQ=";
+    hash = "sha256-y+/s0TDVAFGio5uCzHjf+kHFZB0G8dDgTt2xaqSSz1c=";
   };
 
   # remove cargo config so it can find the linker on aarch64-linux
@@ -26,14 +25,18 @@ rustPlatform.buildRustPackage rec {
     rm .cargo/config
   '';
 
-  cargoSha256 = "sha256-Y/vvRJpv82Uc+Bu3lbZxRsu4TL6sAjz5AWHAHkwh98Y=";
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "heim-0.1.0-rc.1" = "sha256-TKEG0YxF44wLz+qxpS/VfRKucqyl97t3PDxjPajbD58=";
+      "sysinfo-0.15.1" = "sha256-faMxXEHL7DFQLYrAJ+yBL6yiepZotofPF2+SizGQj4A=";
+    };
+  };
 
-  nativeBuildInputs = [ llvmPackages.clang ] ++ lib.optional nvidiaSupport makeWrapper;
-  buildInputs = [ llvmPackages.libclang ] ++ lib.optionals stdenv.isDarwin [ IOKit ];
+  nativeBuildInputs = [ rustPlatform.bindgenHook ] ++ lib.optional nvidiaSupport makeWrapper;
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ IOKit ];
 
   buildFeatures = lib.optional nvidiaSupport "nvidia";
-
-  LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
 
   postInstall = lib.optionalString nvidiaSupport ''
     wrapProgram $out/bin/zenith \
@@ -43,9 +46,10 @@ rustPlatform.buildRustPackage rec {
   meta = with lib; {
     description = "Sort of like top or htop but with zoom-able charts, network, and disk usage"
       + lib.optionalString nvidiaSupport ", and NVIDIA GPU usage";
+    mainProgram = "zenith";
     homepage = "https://github.com/bvaisvil/zenith";
     license = licenses.mit;
-    maintainers = with maintainers; [ bbigras ];
+    maintainers = with maintainers; [ wegank ];
     platforms = platforms.unix;
   };
 }

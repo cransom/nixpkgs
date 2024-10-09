@@ -15,6 +15,7 @@
 , spirv-headers
 , spirv-tools
 , vulkan-headers
+, vulkan-utility-libraries
 , wayland
 }:
 
@@ -23,20 +24,16 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "vulkan-validation-layers";
-  version = "1.3.236.0";
+  version = "1.3.290.0";
 
-  # If we were to use "dev" here instead of headers, the setupHook would be
-  # placed in that output instead of "out".
-  outputs = ["out" "headers"];
-  outputInclude = "headers";
+  src = fetchFromGitHub {
+    owner = "KhronosGroup";
+    repo = "Vulkan-ValidationLayers";
+    rev = "vulkan-sdk-${version}";
+    hash = "sha256-FMzQpc7mwZGib544w0Dx6LeGi64cercm5oUW45raasc=";
+  };
 
-  src = (assert (lib.all (pkg: pkg.version == version) [vulkan-headers glslang spirv-tools spirv-headers]);
-    fetchFromGitHub {
-      owner = "KhronosGroup";
-      repo = "Vulkan-ValidationLayers";
-      rev = "sdk-${version}";
-      hash = "sha256-+VbiXtxzYaF5o+wIrJ+09LmgBdaLv/0VJGFDnBkrXms=";
-    });
+  strictDeps = true;
 
   nativeBuildInputs = [
     cmake
@@ -45,23 +42,23 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
+    glslang
     libX11
     libXau
     libXdmcp
     libXrandr
     libffi
     libxcb
+    robin-hood-hashing
+    spirv-headers
     spirv-tools
     vulkan-headers
+    vulkan-utility-libraries
     wayland
   ];
 
   cmakeFlags = [
-    "-DGLSLANG_INSTALL_DIR=${glslang}"
-    "-DSPIRV_HEADERS_INSTALL_DIR=${spirv-headers}"
-    "-DROBIN_HOOD_HASHING_INSTALL_DIR=${robin-hood-hashing}"
     "-DBUILD_LAYER_SUPPORT_FILES=ON"
-    "-DPKG_CONFIG_EXECUTABLE=${pkg-config}/bin/pkg-config"
     # Hide dev warnings that are useless for packaging
     "-Wno-dev"
   ];
@@ -69,6 +66,8 @@ stdenv.mkDerivation rec {
   # Tests require access to vulkan-compatible GPU, which isn't
   # available in Nix sandbox. Fails with VK_ERROR_INCOMPATIBLE_DRIVER.
   doCheck = false;
+
+  separateDebugInfo = true;
 
   # Include absolute paths to layer libraries in their associated
   # layer definition json files.
@@ -80,7 +79,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "The official Khronos Vulkan validation layers";
+    description = "Official Khronos Vulkan validation layers";
     homepage    = "https://github.com/KhronosGroup/Vulkan-ValidationLayers";
     platforms   = platforms.linux;
     license     = licenses.asl20;

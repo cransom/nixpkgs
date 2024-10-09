@@ -1,47 +1,40 @@
-{ lib
-, aiomisc
-, caio
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, pytestCheckHook
-, pythonOlder
+{
+  lib,
+  aiomisc,
+  aiomisc-pytest,
+  caio,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  pythonOlder,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "aiofile";
-  version = "3.8.0";
-  format = "setuptools";
+  version = "3.8.6";
+  pyproject = true;
 
   disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "mosquito";
-    repo = pname;
+    repo = "aiofile";
     rev = "refs/tags/${version}";
-    hash = "sha256-PIImQZ1ymazsOg8qmlO91tNYHwXqK/d8AuKPsWYvh0w=";
+    hash = "sha256-KBly/aeHHZh7mL8MJ9gmxbqS7PmR4sedtBY/2HCXt54=";
   };
 
-  patches = [
-    (fetchpatch {
-      name = "remove-asynctest.patch";
-      url = "https://github.com/mosquito/aiofile/commit/9253ca42022f17f630ccfb6811f67876910f8b13.patch";
-      hash = "sha256-yMRfqEbdxApFypEj27v1zTgF/4kuLf5aS/+clo3mfZo=";
-    })
-  ];
+  build-system = [ setuptools ];
 
-  propagatedBuildInputs = [
-    caio
-  ];
+  dependencies = [ caio ];
 
   nativeCheckInputs = [
     aiomisc
+    aiomisc-pytest
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "aiofile"
-  ];
+  pythonImportsCheck = [ "aiofile" ];
 
   disabledTests = [
     # Tests (SystemError) fails randomly during nix-review
@@ -54,8 +47,12 @@ buildPythonPackage rec {
     "test_async_open_unicode"
     "test_async_open"
     "test_binary_io_wrapper"
+    "test_line_reader_one_line"
     "test_modes"
+    "test_open_non_existent_file_with_append"
     "test_text_io_wrapper"
+    "test_truncate"
+    "test_unicode_reader"
     "test_unicode_writer"
     "test_write_read_nothing"
   ];
@@ -63,6 +60,7 @@ buildPythonPackage rec {
   meta = with lib; {
     description = "File operations with asyncio support";
     homepage = "https://github.com/mosquito/aiofile";
+    changelog = "https://github.com/aiokitchen/aiomisc/blob/master/CHANGELOG.md";
     license = licenses.asl20;
     maintainers = with maintainers; [ fab ];
   };

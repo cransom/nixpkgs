@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   #
   #     $ tar xf "$(nix-build -A svnfs.src)"
   #     $ grep -R FUSE_USE_VERSION
-  configureFlags = lib.optionals stdenv.isDarwin [ "CFLAGS=-DFUSE_USE_VERSION=25" ];
+  configureFlags = lib.optionals stdenv.hostPlatform.isDarwin [ "CFLAGS=-DFUSE_USE_VERSION=25" ];
 
   # why is this required?
   preConfigure=''
@@ -31,7 +31,7 @@ stdenv.mkDerivation rec {
   # gcc-10. Otherwise build fails as:
   #   ld: svnclient.o:/build/svnfs-0.4/src/svnfs.h:40: multiple definition of
   #     `dirbuf'; svnfs.o:/build/svnfs-0.4/src/svnfs.h:40: first defined here
-  NIX_CFLAGS_COMPILE="-I ${subversion.dev}/include/subversion-1 -fcommon";
+  env.NIX_CFLAGS_COMPILE = "-I ${subversion.dev}/include/subversion-1 -fcommon";
   NIX_LDFLAGS="-lsvn_client-1 -lsvn_subr-1";
 
   meta = {
@@ -40,5 +40,6 @@ stdenv.mkDerivation rec {
     license = lib.licenses.gpl2Only;
     maintainers = [lib.maintainers.marcweber];
     platforms = lib.platforms.unix;
+    mainProgram = "svnfs";
   };
 }

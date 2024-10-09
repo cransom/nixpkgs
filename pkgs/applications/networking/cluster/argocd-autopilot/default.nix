@@ -1,17 +1,17 @@
-{ lib, stdenv, buildGoModule, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
 buildGoModule rec {
   pname = "argocd-autopilot";
-  version = "0.4.11";
+  version = "0.4.17";
 
   src = fetchFromGitHub {
     owner = "argoproj-labs";
     repo = "argocd-autopilot";
     rev = "v${version}";
-    sha256 = "sha256-0y7WP6v1DrAyK9p9cVME9RpNH1ZY0NNMtjHhmPT68kQ=";
+    sha256 = "sha256-txbs1SzAaV1nCl104m0Ht5DwzCmK+sBDn4rZ1newdLc=";
   };
 
-  vendorHash = "sha256-KkklEcxk6pNbxSkomh3LqlK8jgpGC/pZMBkJgXMUi8E=";
+  vendorHash = "sha256-QbjiQVclT8paEKYQmMwj5MLq40mAVh5Ji5VJJTOmEZI=";
 
   proxyVendor = true;
 
@@ -46,6 +46,7 @@ buildGoModule rec {
 
   meta = with lib; {
     description = "ArgoCD Autopilot";
+    mainProgram = "argocd-autopilot";
     downloadPage = "https://github.com/argoproj-labs/argocd-autopilot";
     homepage = "https://argocd-autopilot.readthedocs.io/en/stable/";
     license = licenses.asl20;

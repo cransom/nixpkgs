@@ -6,13 +6,13 @@
 
 stdenv.mkDerivation rec {
   pname = "sigslot";
-  version = "1.2.1";
+  version = "1.2.2";
 
   src = fetchFromGitHub {
     owner = "palacaze";
     repo = "sigslot";
     rev = "v${version}";
-    hash = "sha256-FXoKI0aTpZNHHYZnEoPduf3ctOQ/qKoQrrXZPviAvuY=";
+    hash = "sha256-MKtVZLHp8UfXW8KJ3QjPMhxnt46xV+pA9NMqAX0iqiA=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   dontBuild = true;
 
   meta = with lib; {
-    description = "A header-only, thread safe implementation of signal-slots for C++";
+    description = "Header-only, thread safe implementation of signal-slots for C++";
     license = licenses.mit;
     homepage = "https://github.com/palacaze/sigslot";
     maintainers = with maintainers; [ azahi ];

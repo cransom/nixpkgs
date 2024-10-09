@@ -19,19 +19,25 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "p2pool";
-  version = "2.7";
+  version = "4.1";
 
   src = fetchFromGitHub {
     owner = "SChernykh";
     repo = "p2pool";
     rev = "v${version}";
-    sha256 = "sha256-j3SVwat/LGw/iGcyNn8acR29Ob/WXDKyeCfDTsH+gxA=";
+    hash = "sha256-eMg8DXFtVfYhl6vpg/KRUZUgMU/XsCS29Af1CSIbUsY=";
     fetchSubmodules = true;
   };
 
   nativeBuildInputs = [ cmake pkg-config ];
   buildInputs = [ libuv zeromq libsodium gss hwloc openssl curl ]
-    ++ lib.optionals stdenv.isDarwin [ Foundation ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ Foundation ];
+
+  cmakeFlags = ["-DWITH_LTO=OFF"];
+
+  env.NIX_CFLAGS_COMPILE = toString (lib.optionals (stdenv.hostPlatform.isDarwin && lib.versionOlder stdenv.hostPlatform.darwinMinVersion "10.13") [
+    "-faligned-allocation"
+  ]);
 
   installPhase = ''
     runHook preInstall
@@ -50,5 +56,7 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/SChernykh/p2pool";
     license = licenses.gpl3Only;
     maintainers = with maintainers; [ ratsclub ];
+    mainProgram = "p2pool";
+    platforms = platforms.all;
   };
 }

@@ -1,7 +1,7 @@
 { lib, stdenv, fetchurl, makeWrapper, apr, expat, gnused
 , sslSupport ? true, openssl
 , bdbSupport ? true, db
-, ldapSupport ? !stdenv.isCygwin, openldap
+, ldapSupport ? !stdenv.hostPlatform.isCygwin, openldap
 , libiconv, libxcrypt
 , cyrus_sasl, autoreconfHook
 }:
@@ -12,29 +12,32 @@ assert ldapSupport -> openldap != null;
 
 stdenv.mkDerivation rec {
   pname = "apr-util";
-  version = "1.6.1";
+  version = "1.6.3";
 
   src = fetchurl {
     url = "mirror://apache/apr/${pname}-${version}.tar.bz2";
-    sha256 = "0nq3s1yn13vplgl6qfm09f7n0wm08malff9s59bqf9nid9xjzqfk";
+    sha256 = "sha256-pBB243EHRjJsOUUEKZStmk/KwM4Cd92P6gdv7DyXcrU=";
   };
 
-  patches = [ ./fix-libxcrypt-build.patch ]
-    ++ lib.optional stdenv.isFreeBSD ./include-static-dependencies.patch;
+  patches = [
+    ./fix-libxcrypt-build.patch
+    # Fix incorrect Berkeley DB detection with newer versions of clang due to implicit `int` on main errors.
+    ./clang-bdb.patch
+  ] ++ lib.optional stdenv.hostPlatform.isFreeBSD ./include-static-dependencies.patch;
 
   NIX_CFLAGS_LINK = [ "-lcrypt" ];
 
   outputs = [ "out" "dev" ];
   outputBin = "dev";
 
-  nativeBuildInputs = [ makeWrapper ] ++ lib.optional stdenv.isFreeBSD autoreconfHook;
+  nativeBuildInputs = [ makeWrapper autoreconfHook ];
 
   configureFlags = [ "--with-apr=${apr.dev}" "--with-expat=${expat.dev}" ]
-    ++ lib.optional (!stdenv.isCygwin) "--with-crypto"
+    ++ lib.optional (!stdenv.hostPlatform.isCygwin) "--with-crypto"
     ++ lib.optional sslSupport "--with-openssl=${openssl.dev}"
     ++ lib.optional bdbSupport "--with-berkeley-db=${db.dev}"
     ++ lib.optional ldapSupport "--with-ldap=ldap"
-    ++ lib.optionals stdenv.isCygwin
+    ++ lib.optionals stdenv.hostPlatform.isCygwin
       [ "--without-pgsql" "--without-sqlite2" "--without-sqlite3"
         "--without-freetds" "--without-berkeley-db" "--without-crypto" ]
     ;
@@ -48,13 +51,15 @@ stdenv.mkDerivation rec {
     lib.optionalString (stdenv.buildPlatform != stdenv.hostPlatform) ''
       substituteInPlace Makefile \
         --replace "-ldb-6.9" "-ldb"
+      substituteInPlace apu-1-config \
+        --replace "-ldb-6.9" "-ldb"
   '';
 
   propagatedBuildInputs = [ apr expat libiconv libxcrypt ]
     ++ lib.optional sslSupport openssl
     ++ lib.optional bdbSupport db
     ++ lib.optional ldapSupport openldap
-    ++ lib.optional stdenv.isFreeBSD cyrus_sasl;
+    ++ lib.optional stdenv.hostPlatform.isFreeBSD cyrus_sasl;
 
   postInstall = ''
     for f in $out/lib/*.la $out/lib/apr-util-1/*.la $dev/bin/apu-1-config; do
@@ -76,8 +81,9 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://apr.apache.org/";
-    description = "A companion library to APR, the Apache Portable Runtime";
-    maintainers = [ maintainers.eelco ];
+    description = "Companion library to APR, the Apache Portable Runtime";
+    mainProgram = "apu-1-config";
+    maintainers = [ ];
     platforms = platforms.unix;
     license = licenses.asl20;
   };

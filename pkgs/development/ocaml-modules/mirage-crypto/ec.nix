@@ -1,5 +1,4 @@
 { lib
-, ocaml
 , buildDunePackage
 , mirage-crypto
 , dune-configurator
@@ -23,6 +22,8 @@ buildDunePackage rec {
   inherit (mirage-crypto)
     src
     version;
+
+  duneVersion = "3";
 
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [

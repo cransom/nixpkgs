@@ -1,21 +1,20 @@
-{ fetchFromGitHub, buildGoModule, lib, testers, gitmux }:
+{ fetchFromGitHub, buildGoModule, lib, testers, gitmux, git }:
 
 buildGoModule rec {
   pname = "gitmux";
-  version = "0.7.12";
+  version = "0.11.2";
 
   src = fetchFromGitHub {
     owner = "arl";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-JPrXq4+53cem0TVnm1/AJz/mYcEKaYzqhptJU4V2U0o=";
+    sha256 = "sha256-0Cw98hTg8qPu7BUTBDEgFBOpoCxstPW9HeNXQUUjgGA=";
   };
 
-  vendorHash = "sha256-V6xe+19NiHYIIN4rgkyzdP4eGnRXo0aW4fVbdlIcvig=";
+  vendorHash = "sha256-PHY020MIuLlC1LqNGyBJRNd7J+SzoHbNMPAil7CKP/M=";
 
-  # GitHub source does contain a regression test for the module
-  # but it requires networking as it git clones a repo from github
-  doCheck = false;
+  nativeCheckInputs = [ git ];
+  doCheck = true;
 
   ldflags = [ "-X main.version=${version}" ];
 
@@ -31,5 +30,6 @@ buildGoModule rec {
     homepage = "https://github.com/arl/gitmux";
     license = licenses.mit;
     maintainers = with maintainers; [ nialov ];
+    mainProgram = "gitmux";
   };
 }

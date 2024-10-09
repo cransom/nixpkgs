@@ -9,6 +9,7 @@
 , libXi
 , libXinerama
 , libXrandr
+, libXxf86vm
 , makeDesktopItem
 , mesa
 , pkg-config
@@ -17,16 +18,16 @@
 
 buildGoModule rec {
   pname = "clipqr";
-  version = "1.0.0";
+  version = "1.3.0";
 
   src = fetchFromGitLab {
     owner = "imatt-foss";
     repo = "clipqr";
     rev = "v${version}";
-    sha256 = "sha256-E90nTJtx4GOacu8M7oQBznnSQVDIZatibgKMZEpTUaQ=";
+    hash = "sha256-iuA6RqclMm1CWaiM1kpOpgfYvKaYGOIwFQkLr/nCL5M=";
   };
 
-  vendorSha256 = "5kAOSyVbvot4TX/XfRNe1/zZk6fa7pS1Dvn9nz11u3U=";
+  vendorHash = null;
 
   ldflags = [ "-s" "-w" ];
 
@@ -38,6 +39,7 @@ buildGoModule rec {
     libXi
     libXinerama
     libXrandr
+    libXxf86vm
     mesa
   ];
 
@@ -67,6 +69,7 @@ buildGoModule rec {
     license = licenses.mit;
     maintainers = with maintainers; [ MatthieuBarthel ];
     homepage = "https://gitlab.com/imatt-foss/clipqr";
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
+    mainProgram = "clipqr";
   };
 }

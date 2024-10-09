@@ -1,46 +1,46 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonOlder
-, setuptools-scm
-, pytestCheckHook
-, filelock
-, execnet
-, pytest
-, psutil
-, setproctitle
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  pythonOlder,
+  setuptools,
+  setuptools-scm,
+  pytestCheckHook,
+  filelock,
+  execnet,
+  pytest,
+  psutil,
+  setproctitle,
 }:
 
 buildPythonPackage rec {
   pname = "pytest-xdist";
-  version = "3.1.0";
-  disabled = pythonOlder "3.6";
+  version = "3.6.1";
+  disabled = pythonOlder "3.7";
 
-  format = "pyproject";
+  pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-QP2481RJIcXfzUhqwIDOIocOcdgs7W0uePqXwq3dSAw=";
+    pname = "pytest_xdist";
+    inherit version;
+    hash = "sha256-6tFWpNsjHux2lzf1dmjvWKIISjSy5VxKj6INhhEHMA0=";
   };
 
-  nativeBuildInputs = [
+  build-system = [
+    setuptools
     setuptools-scm
   ];
 
-  buildInputs = [
-    pytest
-  ];
+  buildInputs = [ pytest ];
 
-  propagatedBuildInputs = [
-    execnet
-  ];
+  dependencies = [ execnet ];
 
   nativeCheckInputs = [
     filelock
     pytestCheckHook
   ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     psutil = [ psutil ];
     setproctitle = [ setproctitle ];
   };
@@ -60,11 +60,14 @@ buildPythonPackage rec {
     "test_rsyncignore"
     # flakey
     "test_internal_errors_propagate_to_controller"
+    # https://github.com/pytest-dev/pytest-xdist/issues/985
+    "test_workqueue_ordered_by_size"
   ];
 
   setupHook = ./setup-hook.sh;
 
   meta = with lib; {
+    changelog = "https://github.com/pytest-dev/pytest-xdist/blob/v${version}/CHANGELOG.rst";
     description = "Pytest xdist plugin for distributed testing and loop-on-failing modes";
     homepage = "https://github.com/pytest-dev/pytest-xdist";
     license = licenses.mit;

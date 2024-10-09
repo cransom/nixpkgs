@@ -1,6 +1,6 @@
 { lib, stdenv, fetchFromGitHub, fetchpatch, cmake, zlib, sqlite, gmp, libffi, cairo,
   ncurses, freetype, libGLU, libGL, libpng, libtiff, libjpeg, readline, libsndfile,
-  libxml2, freeglut, libsamplerate, pcre, libevent, libedit, yajl,
+  libxml2, libglut, libsamplerate, pcre, libevent, libedit, yajl,
   python3, openssl, glfw, pkg-config, libpthreadstubs, libXdmcp, libmemcached
 }:
 
@@ -30,7 +30,7 @@ stdenv.mkDerivation {
   buildInputs = [
     zlib sqlite gmp libffi cairo ncurses freetype
     libGLU libGL libpng libtiff libjpeg readline libsndfile libxml2
-    freeglut libsamplerate pcre libevent libedit yajl
+    libglut libsamplerate pcre libevent libedit yajl
     glfw openssl libpthreadstubs libXdmcp
     libmemcached python3
   ];
@@ -56,7 +56,7 @@ stdenv.mkDerivation {
   '';
 
   # for gcc5; c11 inline semantics breaks the build
-  NIX_CFLAGS_COMPILE = "-fgnu89-inline";
+  env.NIX_CFLAGS_COMPILE = "-fgnu89-inline";
 
   meta = with lib; {
     description = "Io programming language";
@@ -66,7 +66,6 @@ stdenv.mkDerivation {
     maintainers = with maintainers; [
       raskin
       maggesi
-      vrthra
     ];
     platforms = [ "x86_64-linux" ];
   };

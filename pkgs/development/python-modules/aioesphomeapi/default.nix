@@ -1,39 +1,59 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, mock
-, noiseprotocol
-, protobuf
-, pytest-asyncio
-, pytestCheckHook
-, pythonOlder
-, zeroconf
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
+
+  # build-system
+  cython,
+  setuptools,
+
+  # dependencies
+  aiohappyeyeballs,
+  async-interrupt,
+  async-timeout,
+  chacha20poly1305-reuseable,
+  cryptography,
+  noiseprotocol,
+  protobuf,
+  zeroconf,
+
+  # tests
+  mock,
+  pytest-asyncio,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "aioesphomeapi";
-  version = "13.3.1";
-  format = "setuptools";
+  version = "27.0.0";
+  pyproject = true;
 
   disabled = pythonOlder "3.9";
 
   src = fetchFromGitHub {
     owner = "esphome";
-    repo = pname;
+    repo = "aioesphomeapi";
     rev = "refs/tags/v${version}";
-    hash = "sha256-Pca+SMuUL3XyQpLAL6SOYPnztc95WF2o0v4+5Nc5Nxg=";
+    hash = "sha256-2FA0QleMJG69vhyC85tO4ZAY0U8qPIdyJROHKxC35GM=";
   };
 
-  postPatch = ''
-    substituteInPlace requirements.txt \
-      --replace "protobuf>=3.12.2,<4.0" "protobuf>=3.12.2"
-  '';
+  build-system = [
+    setuptools
+    cython
+  ];
 
-  propagatedBuildInputs = [
+  pythonRelaxDeps = [ "cryptography" ];
+
+  dependencies = [
+    aiohappyeyeballs
+    async-interrupt
+    chacha20poly1305-reuseable
+    cryptography
     noiseprotocol
     protobuf
     zeroconf
-  ];
+  ] ++ lib.optionals (pythonOlder "3.11") [ async-timeout ];
 
   nativeCheckInputs = [
     mock
@@ -41,15 +61,25 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
-  pythonImportsCheck = [
-    "aioesphomeapi"
+  disabledTests = [
+    # https://github.com/esphome/aioesphomeapi/issues/837
+    "test_reconnect_logic_stop_callback"
+    # python3.12.4 regression
+    # https://github.com/esphome/aioesphomeapi/issues/889
+    "test_start_connection_cannot_increase_recv_buffer"
+    "test_start_connection_can_only_increase_buffer_size_to_262144"
   ];
+
+  pythonImportsCheck = [ "aioesphomeapi" ];
 
   meta = with lib; {
     description = "Python Client for ESPHome native API";
     homepage = "https://github.com/esphome/aioesphomeapi";
     changelog = "https://github.com/esphome/aioesphomeapi/releases/tag/v${version}";
     license = licenses.mit;
-    maintainers = with maintainers; [ fab hexa ];
+    maintainers = with maintainers; [
+      fab
+      hexa
+    ];
   };
 }

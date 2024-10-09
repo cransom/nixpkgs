@@ -1,16 +1,21 @@
 { lib, stdenv, fetchFromGitHub, cmake }:
 stdenv.mkDerivation rec {
   pname = "vulkan-headers";
-  version = "1.3.236.0";
+  version = "1.3.290.0";
 
   nativeBuildInputs = [ cmake ];
+
+  # TODO: investigate why <algorithm> isn't found
+  cmakeFlags = lib.optionals stdenv.hostPlatform.isDarwin [ "-DVULKAN_HEADERS_ENABLE_MODULE=OFF" ];
 
   src = fetchFromGitHub {
     owner = "KhronosGroup";
     repo = "Vulkan-Headers";
-    rev = "sdk-${version}";
-    hash = "sha256-b1q9QugFH4lieS8CTOyZ3uoQ7bd44G8NPEwRtUPD+24=";
+    rev = "vulkan-sdk-${version}";
+    hash = "sha256-goxA3Wg3u5hNCz54tWMJnFaS0JGVjphy14Ng/sAK/EM=";
   };
+
+  passthru.updateScript = ./update.sh;
 
   meta = with lib; {
     description = "Vulkan Header files and API registry";

@@ -3,18 +3,18 @@
 , httpServer ? false # build web interface for the daemon
 , client ? false # build amule remote gui
 , fetchFromGitHub
+, fetchpatch
 , stdenv
 , lib
 , cmake
 , zlib
-, wxGTK30 # WxGTK 3.0 must be used because aMule does not yet work well with 3.1
+, wxGTK32
 , perl
 , cryptopp
 , libupnp
 , boost # Not using boost leads to crashes with gtk3
 , gettext
 , libpng
-, autoreconfHook
 , pkg-config
 , makeWrapper
 , libX11
@@ -37,11 +37,18 @@ stdenv.mkDerivation rec {
     sha256 = "1nm4vxgmisn1b6l3drmz0q04x067j2i8lw5rnf0acaapwlp8qwvi";
   };
 
+  patches = [
+    (fetchpatch {
+      url = "https://sources.debian.org/data/main/a/amule/1%3A2.3.3-3/debian/patches/wx3.2.patch";
+      hash = "sha256-OX5Ef80bL+dQqHo2OBLZvzMUrU6aOHfsF7AtoE1r7rs=";
+    })
+  ];
+
   nativeBuildInputs = [ cmake gettext makeWrapper pkg-config ];
 
   buildInputs = [
     zlib
-    wxGTK30
+    wxGTK32
     perl
     cryptopp.dev
     libupnp
@@ -88,8 +95,9 @@ stdenv.mkDerivation rec {
 
     homepage = "https://github.com/amule-project/amule";
     license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ ];
+    maintainers = [ ];
     platforms = platforms.unix;
-    broken = stdenv.isDarwin;
+    # Undefined symbols for architecture arm64: "_FSFindFolder"
+    broken = stdenv.hostPlatform.isDarwin;
   };
 }

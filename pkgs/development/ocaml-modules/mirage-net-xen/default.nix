@@ -1,5 +1,4 @@
-{ lib
-, buildDunePackage
+{ buildDunePackage
 , netchannel
 , ppx_sexp_conv
 , lwt
@@ -19,6 +18,8 @@ buildDunePackage {
     version
     meta
     ;
+
+  duneVersion = "3";
 
   nativeBuildInputs = [
     ppx_sexp_conv

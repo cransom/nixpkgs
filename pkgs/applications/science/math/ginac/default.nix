@@ -2,17 +2,17 @@
 
 stdenv.mkDerivation rec {
   pname = "ginac";
-  version = "1.8.5";
+  version = "1.8.7";
 
   src = fetchurl {
     url = "https://www.ginac.de/ginac-${version}.tar.bz2";
-    sha256 = "sha256-wks3oecJ9mDQl4eH6GszSAPNKOwXaJzzbd/zgAc+omE=";
+    sha256 = "sha256-cf9PLYoA5vB86P7mm3bcweu7cnvmdgtYfB+7XM97Yeo=";
   };
 
   propagatedBuildInputs = [ cln ];
 
   buildInputs = [ readline ]
-    ++ lib.optional stdenv.isDarwin gmp;
+    ++ lib.optional stdenv.hostPlatform.isDarwin gmp;
 
   nativeBuildInputs = [ pkg-config python3 ];
 

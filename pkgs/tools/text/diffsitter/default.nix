@@ -4,6 +4,8 @@
 , makeWrapper
 , rustPlatform
 , tree-sitter
+, gitUpdater
+, versionCheckHook
 }:
 
 let
@@ -32,17 +34,17 @@ let
 in
 rustPlatform.buildRustPackage rec {
   pname = "diffsitter";
-  version = "0.7.3";
+  version = "0.8.4";
 
   src = fetchFromGitHub {
     owner = "afnanenayet";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-AJjgn+qFfy6/gjb8tQOJDmevZy1ZfpF0nTxAgunSabE=";
+    hash = "sha256-ta7JcSPEgpJwieYvtZnNMFvsYvz4FuxthhmKMYe2XUE=";
     fetchSubmodules = false;
   };
 
-  cargoSha256 = "sha256-U/XvllkzEVt4TpDPA5gSRKpIIQagATGdHh7YPFOo4CY=";
+  cargoHash = "sha256-VbdV4dftCxxKLJr9TEuCe9tvSGbc62AUwlDZdaNRNhw=";
 
   buildNoDefaultFeatures = true;
   buildFeatures = [
@@ -53,7 +55,16 @@ rustPlatform.buildRustPackage rec {
     makeWrapper
   ];
 
+  nativeInstallCheckInputs = [
+    versionCheckHook
+  ];
+  doInstallCheck = true;
+
   postInstall = ''
+    # completions are not yet implemented
+    # so we can safely remove this without installing the completions
+    rm $out/bin/diffsitter_completions
+
     wrapProgram "$out/bin/diffsitter" \
       --prefix LD_LIBRARY_PATH : "${libPath}"
   '';
@@ -67,9 +78,11 @@ rustPlatform.buildRustPackage rec {
   #     tests::diff_hunks_snapshot::_short_python_py_true_expects
   #     tests::diff_hunks_snapshot::_short_rust_rs_true_expects
 
+  passthru.updateScript = gitUpdater { rev-prefix = "v"; };
+
   meta = with lib; {
     homepage = "https://github.com/afnanenayet/diffsitter";
-    description = "A tree-sitter based AST difftool to get meaningful semantic diffs";
+    description = "Tree-sitter based AST difftool to get meaningful semantic diffs";
     license = licenses.mit;
     maintainers = with maintainers; [ bbigras ];
   };

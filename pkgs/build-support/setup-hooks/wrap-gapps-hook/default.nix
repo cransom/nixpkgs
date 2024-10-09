@@ -3,18 +3,39 @@
 , makeSetupHook
 , makeWrapper
 , gobject-introspection
-, isGraphical ? true
+, isGraphical ? false
 , gtk3
 , librsvg
 , dconf
 , callPackage
-, wrapGAppsHook
-, writeTextFile
+, wrapGAppsHook3
+, targetPackages
 }:
 
 makeSetupHook {
   name = "wrap-gapps-hook";
-  deps = lib.optionals (!stdenv.isDarwin) [
+  propagatedBuildInputs = [
+    # We use the wrapProgram function.
+    makeWrapper
+  ] ++ lib.optionals isGraphical [
+    # TODO: remove this, packages should depend on GTK explicitly.
+    gtk3
+
+    librsvg
+  ];
+
+  # depsTargetTargetPropagated will essentially be buildInputs when wrapGAppsHook3 is placed into nativeBuildInputs
+  # the librsvg and gtk3 above should be removed but kept to not break anything that implicitly depended on its binaries
+  depsTargetTargetPropagated = assert (lib.assertMsg (!targetPackages ? raw) "wrapGAppsHook3 must be in nativeBuildInputs"); lib.optionals isGraphical [
+    # librsvg provides a module for gdk-pixbuf to allow rendering
+    # SVG icons. Most icon themes are SVG-based and so are some
+    # graphics in GTK (e.g. cross for closing window in window title bar)
+    # so it is pretty much required for applications using GTK.
+    librsvg
+
+    # TODO: remove this, packages should depend on GTK explicitly.
+    gtk3
+  ] ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
     # It is highly probable that a program will use GSettings,
     # at minimum through GTK file chooser dialogue.
     # Let’s add a GIO module for “dconf” GSettings backend
@@ -23,19 +44,6 @@ makeSetupHook {
     # Unfortunately, it also requires the user to have dconf
     # D-Bus service enabled globally (e.g. through a NixOS module).
     dconf.lib
-  ] ++ lib.optionals isGraphical [
-    # TODO: remove this, packages should depend on GTK explicitly.
-    gtk3
-
-    # librsvg provides a module for gdk-pixbuf to allow rendering
-    # SVG icons. Most icon themes are SVG-based and so are some
-    # graphics in GTK (e.g. cross for closing window in window title bar)
-    # so it is pretty much required for applications using GTK.
-    librsvg
-  ] ++ [
-
-    # We use the wrapProgram function.
-    makeWrapper
   ];
   passthru = {
     tests = let
@@ -50,7 +58,8 @@ makeSetupHook {
 
         src = sample-project;
 
-        nativeBuildInputs = [ wrapGAppsHook ];
+        strictDeps = true;
+        nativeBuildInputs = [ wrapGAppsHook3 ];
 
         installFlags = [ "bin-foo" "libexec-bar" ];
       };
@@ -59,9 +68,18 @@ makeSetupHook {
       basic-contains-dconf = let
         tested = basic;
       in testLib.runTest "basic-contains-dconf" (
-        testLib.skip stdenv.isDarwin ''
+        testLib.skip stdenv.hostPlatform.isDarwin ''
           ${expectSomeLineContainingYInFileXToMentionZ "${tested}/bin/foo" "GIO_EXTRA_MODULES" "${dconf.lib}/lib/gio/modules"}
           ${expectSomeLineContainingYInFileXToMentionZ "${tested}/libexec/bar" "GIO_EXTRA_MODULES" "${dconf.lib}/lib/gio/modules"}
+        ''
+      );
+
+      basic-contains-gdk-pixbuf = let
+        tested = basic;
+      in testLib.runTest "basic-contains-gdk-pixbuf" (
+        testLib.skip stdenv.hostPlatform.isDarwin ''
+          ${expectSomeLineContainingYInFileXToMentionZ "${tested}/bin/foo" "GDK_PIXBUF_MODULE_FILE" "${lib.getLib librsvg}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"}
+          ${expectSomeLineContainingYInFileXToMentionZ "${tested}/libexec/bar" "GDK_PIXBUF_MODULE_FILE" "${lib.getLib librsvg}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"}
         ''
       );
 
@@ -70,6 +88,8 @@ makeSetupHook {
         name = "typelib-Mahjong";
 
         src = sample-project;
+
+        strictDeps = true;
 
         installFlags = [ "typelib-Mahjong" ];
       };
@@ -80,9 +100,10 @@ makeSetupHook {
 
         src = sample-project;
 
+        strictDeps = true;
         nativeBuildInputs = [
           gobject-introspection
-          wrapGAppsHook
+          wrapGAppsHook3
         ];
 
         buildInputs = [
@@ -111,6 +132,8 @@ makeSetupHook {
 
         src = sample-project;
 
+        strictDeps = true;
+
         makeFlags = [
           "LIBDIR=${placeholder "lib"}/lib"
         ];
@@ -124,9 +147,10 @@ makeSetupHook {
 
         src = sample-project;
 
+        strictDeps = true;
         nativeBuildInputs = [
           gobject-introspection
-          wrapGAppsHook
+          wrapGAppsHook3
         ];
 
         buildInputs = [
@@ -154,9 +178,10 @@ makeSetupHook {
 
         src = sample-project;
 
+        strictDeps = true;
         nativeBuildInputs = [
           gobject-introspection
-          wrapGAppsHook
+          wrapGAppsHook3
         ];
 
         installFlags = [ "typelib-Cow" "bin-foo" "libexec-bar" ];

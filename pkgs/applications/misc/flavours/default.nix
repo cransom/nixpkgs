@@ -2,22 +2,22 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "flavours";
-  version = "0.6.1";
+  version = "0.7.1";
 
   src = fetchFromGitHub {
     owner = "Misterio77";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-Q2YW9oFqzkmWscoE4p9E43bo1/4bQrTnd8tvPsJqJyQ=";
+    hash = "sha256-SOsHvcfDdUpb0x5VZ1vZJnGaIiWWOPgnAwKYNXzfUfI=";
   };
 
-  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ libiconv ];
 
-  cargoSha256 = "sha256-IrVcd8ilWbaigGMqT+kaIW3gnE+m+Ik5IyhQ4zPlyPE=";
+  cargoHash = "sha256-aimPeGIE5jP0pdrqwnzUzBqW0jz9+kcfpLdCN0r30xU=";
 
   nativeBuildInputs = [ installShellFiles ];
 
-  postInstall = ''
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd flavours \
       --zsh <($out/bin/flavours --completions zsh) \
       --fish <($out/bin/flavours --completions fish) \
@@ -25,10 +25,11 @@ rustPlatform.buildRustPackage rec {
   '';
 
   meta = with lib; {
-    description = "An easy to use base16 scheme manager/builder that integrates with any workflow";
+    description = "Easy to use base16 scheme manager/builder that integrates with any workflow";
     homepage = "https://github.com/Misterio77/flavours";
     changelog = "https://github.com/Misterio77/flavours/releases/tag/v${version}";
     license = licenses.mit;
-    maintainers = with maintainers; [ fortuneteller2k ];
+    maintainers = with maintainers; [ moni misterio77 ];
+    mainProgram = "flavours";
   };
 }

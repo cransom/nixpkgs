@@ -3,18 +3,20 @@
 , autoreconfHook
 , pkg-config
 , dbus
+, sysctl
+, gitUpdater
 }:
 
 stdenv.mkDerivation rec {
   pname = "ell";
-  version = "0.55";
+  version = "0.67";
 
   outputs = [ "out" "dev" ];
 
   src = fetchgit {
     url = "https://git.kernel.org/pub/scm/libs/ell/ell.git";
     rev = version;
-    sha256 = "sha256-vMWs+0iaszq+p55Z9AhqkNHWeOwlgt2iq7uuA8xGjJ4=";
+    hash = "sha256-PIxPhKqsxybkLQerkQ15kTRh0oW812lWbCGEig11KQk=";
   };
 
   nativeBuildInputs = [
@@ -24,11 +26,23 @@ stdenv.mkDerivation rec {
 
   nativeCheckInputs = [
     dbus
+    # required as the sysctl test works on some machines
+    sysctl
   ];
 
   enableParallelBuilding = true;
 
-  doCheck = true;
+  # Runs multiple dbus instances on the same port failing the bind.
+  enableParallelChecking = false;
+
+  # tests sporadically fail on musl
+  doCheck = !stdenv.hostPlatform.isMusl;
+
+  passthru = {
+    updateScript = gitUpdater {
+      url = "https://git.kernel.org/pub/scm/libs/ell/ell.git";
+    };
+  };
 
   meta = with lib; {
     homepage = "https://git.kernel.org/pub/scm/libs/ell/ell.git";
@@ -39,6 +53,6 @@ stdenv.mkDerivation rec {
     changelog = "https://git.kernel.org/pub/scm/libs/ell/ell.git/tree/ChangeLog?h=${version}";
     license = licenses.lgpl21Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ mic92 dtzWill maxeaubrey ];
+    maintainers = with maintainers; [ mic92 dtzWill ];
   };
 }

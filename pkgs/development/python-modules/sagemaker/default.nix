@@ -1,69 +1,124 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, pythonRelaxDepsHook
-, attrs
-, boto3
-, google-pasta
-, importlib-metadata
-, numpy
-, protobuf
-, protobuf3-to-dict
-, smdebug-rulesconfig
-, pandas
-, pathos
-, packaging
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  fetchpatch,
+
+  # build-system
+  hatchling,
+
+  # dependencies
+  attrs,
+  boto3,
+  cloudpickle,
+  docker,
+  google-pasta,
+  importlib-metadata,
+  jsonschema,
+  numpy,
+  packaging,
+  pandas,
+  pathos,
+  platformdirs,
+  protobuf,
+  psutil,
+  pyyaml,
+  requests,
+  sagemaker-core,
+  schema,
+  smdebug-rulesconfig,
+  tblib,
+  tqdm,
+  urllib3,
+
+  # optional-dependencies
+  scipy,
+  accelerate,
 }:
 
 buildPythonPackage rec {
   pname = "sagemaker";
-  version = "2.126.0";
-  format = "setuptools";
+  version = "2.232.1";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-wuU53FmrtAY8E08Q+W4OhBoBQ8kks3LjJiR7kxlbfAg=";
+  src = fetchFromGitHub {
+    owner = "aws";
+    repo = "sagemaker-python-sdk";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-I+iZKx1CnZIGYgYuYhhs8BnY84KPyKOGw8M0He26DGU=";
   };
 
-  nativeBuildInputs = [ pythonRelaxDepsHook ];
-  pythonRelaxDeps = [
-    # FIXME: Remove when >= 2.111.0
-    "attrs"
-    "protobuf"
+  patches = [
+    # Distutils removal, fix build with python 3.12
+    # https://github.com/aws/sagemaker-python-sdk/pull/4544
+    (fetchpatch {
+      url = "https://github.com/aws/sagemaker-python-sdk/commit/84447ba59e544c810aeb842fd058e20d89e3fc74.patch";
+      hash = "sha256-B8Q18ViB7xYy1F5LoL1NvXj2lnFPgt+C9wssSODyAXM=";
+    })
+    (fetchpatch {
+      url = "https://github.com/aws/sagemaker-python-sdk/commit/e9e08a30cb42d4b2d7299c1c4b42d680a8c78110.patch";
+      hash = "sha256-uGPtXSXfeaIvt9kkZZKQDuiZfoRgw3teffuxai1kKlY=";
+    })
   ];
 
-  propagatedBuildInputs = [
+  build-system = [
+    hatchling
+  ];
+
+  pythonRelaxDeps = [
+    "boto3"
+    "cloudpickle"
+    "importlib-metadata"
+  ];
+
+  dependencies = [
     attrs
     boto3
+    cloudpickle
+    docker
     google-pasta
     importlib-metadata
+    jsonschema
     numpy
     packaging
-    pathos
-    protobuf
-    protobuf3-to-dict
-    smdebug-rulesconfig
     pandas
+    pathos
+    platformdirs
+    protobuf
+    psutil
+    pyyaml
+    requests
+    sagemaker-core
+    schema
+    smdebug-rulesconfig
+    tblib
+    tqdm
+    urllib3
   ];
 
-  postFixup = ''
-    [ "$($out/bin/sagemaker-upgrade-v2 --help 2>&1 | grep -cim1 'pandas failed to import')" -eq "0" ]
-  '';
-
-  doCheck = false;
+  doCheck = false; # many test dependencies are not available in nixpkgs
 
   pythonImportsCheck = [
     "sagemaker"
     "sagemaker.lineage.visualizer"
   ];
 
-  meta = with lib; {
+  optional-dependencies = {
+    local = [
+      urllib3
+      docker
+      pyyaml
+    ];
+    scipy = [ scipy ];
+    huggingface = [ accelerate ];
+    # feature-processor = [ pyspark sagemaker-feature-store-pyspark ]; # not available in nixpkgs
+  };
+
+  meta = {
     description = "Library for training and deploying machine learning models on Amazon SageMaker";
     homepage = "https://github.com/aws/sagemaker-python-sdk/";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ nequissimus ];
+    changelog = "https://github.com/aws/sagemaker-python-sdk/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ nequissimus ];
   };
 }

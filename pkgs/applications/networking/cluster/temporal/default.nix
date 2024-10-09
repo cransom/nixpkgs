@@ -2,16 +2,16 @@
 
 buildGoModule rec {
   pname = "temporal";
-  version = "1.19.1";
+  version = "1.25.0";
 
   src = fetchFromGitHub {
     owner = "temporalio";
     repo = "temporal";
     rev = "v${version}";
-    hash = "sha256-j2+K/ZDDNakofrToxhyA1gh534l3Eq6G/fNXE0ktceY=";
+    hash = "sha256-H/kHPS43h+MQgOpKIHoM6hJQxCYq8Yo1GzOQeLFRoNw=";
   };
 
-  vendorHash = "sha256-KkgyL37VJy1DhfCB5RJpjczBPbzQwt1xsovQ0xCXGr4=";
+  vendorHash = "sha256-RhWeIT1i86wxAALNhhpWZjWo1v+82vTrGBWCaryE3Ws=";
 
   excludedPackages = [ "./build" ];
 
@@ -24,6 +24,9 @@ buildGoModule rec {
 
   installPhase = ''
     runHook preInstall
+
+    mkdir -p $out/share
+    cp -r ./schema $out/share/
 
     install -Dm755 "$GOPATH/bin/server" -T $out/bin/temporal-server
     install -Dm755 "$GOPATH/bin/cassandra" -T $out/bin/temporal-cassandra-tool
@@ -38,11 +41,11 @@ buildGoModule rec {
   };
 
   meta = with lib; {
-    description = "A microservice orchestration platform which enables developers to build scalable applications without sacrificing productivity or reliability";
+    description = "Microservice orchestration platform which enables developers to build scalable applications without sacrificing productivity or reliability";
     homepage = "https://temporal.io";
     changelog = "https://github.com/temporalio/temporal/releases/tag/v${version}";
     license = licenses.mit;
-    maintainers = with maintainers; [ titanous ];
+    maintainers = [ ];
     mainProgram = "temporal-server";
   };
 }

@@ -1,8 +1,6 @@
 { stdenv
 , lib
 , fetchFromGitHub
-, fetchpatch
-, runCommand
 , rustPlatform
 , openssl
 , zlib
@@ -10,64 +8,64 @@
 , pkg-config
 , python3
 , xorg
-, libiconv
 , Libsystem
 , AppKit
 , Security
 , nghttp2
 , libgit2
-, withExtraFeatures ? true
+, withDefaultFeatures ? true
+, additionalFeatures ? (p: p)
 , testers
 , nushell
 , nix-update-script
 }:
 
-rustPlatform.buildRustPackage rec {
+let
+  version = "0.98.0";
+in
+
+rustPlatform.buildRustPackage {
   pname = "nushell";
-  version = "0.75.0";
+  inherit version;
 
   src = fetchFromGitHub {
-    owner = pname;
-    repo = pname;
+    owner = "nushell";
+    repo = "nushell";
     rev = version;
-    sha256 = "sha256-u8/SvuR/RpJaBX4Dr3Onrk0AVpIAeVb+399+NUpgkfI=";
+    hash = "sha256-0XN26onR4Tk8Ejc/UntdL+b5FPBOoBmDQM0DRommIMo=";
   };
 
-  cargoSha256 = "sha256-hnSumfZd9ylEx3dkTGW2s4VSv107MHOn21ytOcimhPw=";
-
-  # enable pkg-config feature of zstd
-  cargoPatches = [ ./zstd-pkg-config.patch ];
+  cargoHash = "sha256-43V0TnYGG2tyWRIGaohIaoN7dxnY1fle2Bp5lDiFlWg=";
 
   nativeBuildInputs = [ pkg-config ]
-    ++ lib.optionals (withExtraFeatures && stdenv.isLinux) [ python3 ]
-    ++ lib.optionals stdenv.isDarwin [ rustPlatform.bindgenHook ];
+    ++ lib.optionals (withDefaultFeatures && stdenv.hostPlatform.isLinux) [ python3 ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ rustPlatform.bindgenHook ];
 
   buildInputs = [ openssl zstd ]
-    ++ lib.optionals stdenv.isDarwin [ zlib libiconv Libsystem Security ]
-    ++ lib.optionals (withExtraFeatures && stdenv.isLinux) [ xorg.libX11 ]
-    ++ lib.optionals (withExtraFeatures && stdenv.isDarwin) [ AppKit nghttp2 libgit2 ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ zlib Libsystem Security ]
+    ++ lib.optionals (withDefaultFeatures && stdenv.hostPlatform.isLinux) [ xorg.libX11 ]
+    ++ lib.optionals (withDefaultFeatures && stdenv.hostPlatform.isDarwin) [ AppKit nghttp2 libgit2 ];
 
-  buildFeatures = lib.optional withExtraFeatures "extra";
+  buildNoDefaultFeatures = !withDefaultFeatures;
+  buildFeatures = additionalFeatures [ ];
 
-  # TODO investigate why tests are broken on darwin
-  # failures show that tests try to write to paths
-  # outside of TMPDIR
-  doCheck = ! stdenv.isDarwin;
+  doCheck = ! stdenv.hostPlatform.isDarwin; # Skip checks on darwin. Failing tests since 0.96.0
 
   checkPhase = ''
     runHook preCheck
-    echo "Running cargo test"
-    HOME=$TMPDIR cargo test
+    (
+      # The skipped tests all fail in the sandbox because in the nushell test playground,
+      # the tmp $HOME is not set, so nu falls back to looking up the passwd dir of the build
+      # user (/var/empty). The assertions however do respect the set $HOME.
+      set -x
+      HOME=$(mktemp -d) cargo test -j $NIX_BUILD_CORES --offline -- \
+        --test-threads=$NIX_BUILD_CORES \
+        --skip=repl::test_config_path::test_default_config_path \
+        --skip=repl::test_config_path::test_xdg_config_bad \
+        --skip=repl::test_config_path::test_xdg_config_empty
+    )
     runHook postCheck
   '';
-
-  meta = with lib; {
-    description = "A modern shell written in Rust";
-    homepage = "https://www.nushell.sh/";
-    license = licenses.mit;
-    maintainers = with maintainers; [ Br1ght0ne johntitor marsam ];
-    mainProgram = "nu";
-  };
 
   passthru = {
     shellPath = "/bin/nu";
@@ -75,5 +73,13 @@ rustPlatform.buildRustPackage rec {
       package = nushell;
     };
     updateScript = nix-update-script { };
+  };
+
+  meta = with lib; {
+    description = "Modern shell written in Rust";
+    homepage = "https://www.nushell.sh/";
+    license = licenses.mit;
+    maintainers = with maintainers; [ Br1ght0ne johntitor joaquintrinanes ];
+    mainProgram = "nu";
   };
 }

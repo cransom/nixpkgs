@@ -1,65 +1,82 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, aiosqlite
-, aiofiles
-, pytz
-, python-dateutil
-, sortedcontainers
-, cryptography
-, typing-extensions
-, importlib-metadata
-, pytestCheckHook
-, pytest-asyncio
-, pytest-mock
-, asynctest
-, pythonOlder
+{
+  lib,
+  stdenv,
+  aiofiles,
+  aiosqlite,
+  buildPythonPackage,
+  cryptography,
+  fetchFromGitHub,
+  pyopenssl,
+  pytest-asyncio_0_21,
+  pytest-mock,
+  pytestCheckHook,
+  python-dateutil,
+  pythonOlder,
+  pytz,
+  setuptools,
+  sortedcontainers,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "asyncua";
-  version = "1.0.0";
-  format = "setuptools";
+  version = "1.1.5";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
     owner = "FreeOpcUa";
     repo = "opcua-asyncio";
-    rev = "v${version}";
-    hash = "sha256-wBtI3ZlsvOkNvl/q0X9cm2hNRUBW1oB/kZOo8lqo4dQ=";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-XXjzYDOEBdA4uk0VCzscHrPCY2Lgin0JBAVDdxmSOio=";
+    fetchSubmodules = true;
   };
 
-  propagatedBuildInputs = [
-    aiosqlite
-    aiofiles
-    pytz
-    python-dateutil
-    sortedcontainers
-    cryptography
-    typing-extensions
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    importlib-metadata
-  ];
+  postPatch = ''
+    # Workaround hardcoded paths in test
+    # "test_cli_tools_which_require_sigint"
+    substituteInPlace tests/test_tools.py \
+      --replace-fail "tools/" "$out/bin/"
+  '';
 
-  pythonImportsCheck = [
-    "asyncua"
+  build-system = [ setuptools ];
+
+  dependencies = [
+    aiofiles
+    aiosqlite
+    cryptography
+    pyopenssl
+    python-dateutil
+    pytz
+    sortedcontainers
+    typing-extensions
   ];
 
   nativeCheckInputs = [
     pytestCheckHook
-    pytest-asyncio
+    pytest-asyncio_0_21
     pytest-mock
-    asynctest
   ];
 
+  pythonImportsCheck = [ "asyncua" ];
+
   disabledTests = [
-    "test_cli_tools_which_require_sigint" # Hard coded path only works from root of src
+    # Failed: DID NOT RAISE <class 'asyncio.exceptions.TimeoutError'>
+    "test_publish"
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # OSError: [Errno 48] error while attempting to bind on address ('127.0.0.1',...
+    "test_anonymous_rejection"
+    "test_certificate_handling_success"
+    "test_encrypted_private_key_handling_success"
+    "test_encrypted_private_key_handling_success_with_cert_props"
+    "test_encrypted_private_key_handling_failure"
   ];
 
   meta = with lib; {
     description = "OPC UA / IEC 62541 Client and Server for Python";
     homepage = "https://github.com/FreeOpcUa/opcua-asyncio";
+    changelog = "https://github.com/FreeOpcUa/opcua-asyncio/releases/tag/v${version}";
     license = licenses.lgpl3Plus;
     maintainers = with maintainers; [ harvidsen ];
   };

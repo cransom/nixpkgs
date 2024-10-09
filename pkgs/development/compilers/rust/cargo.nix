@@ -2,12 +2,16 @@
 , file, curl, pkg-config, python3, openssl, cmake, zlib
 , installShellFiles, makeWrapper, rustPlatform, rustc
 , CoreFoundation, Security
-, auditable ? false # TODO: change to true when this is the default
+, auditable ? !cargo-auditable.meta.broken
+, cargo-auditable
+, pkgsBuildBuild
 }:
 
-rustPlatform.buildRustPackage {
+rustPlatform.buildRustPackage.override {
+  cargo-auditable = cargo-auditable.bootstrap;
+} ({
   pname = "cargo";
-  inherit (rustc) version src;
+  inherit (rustc.unwrapped) version src;
 
   # the rust source tarball already has all the dependencies vendored, no need to fetch them again
   cargoVendorDir = "vendor";
@@ -17,7 +21,7 @@ rustPlatform.buildRustPackage {
 
   passthru = {
     rustc = rustc;
-    inherit (rustc) tests;
+    inherit (rustc.unwrapped) tests;
   };
 
   # changes hash of vendor directory otherwise
@@ -29,7 +33,7 @@ rustPlatform.buildRustPackage {
     zlib
   ];
   buildInputs = [ file curl python3 openssl zlib ]
-    ++ lib.optionals stdenv.isDarwin [ CoreFoundation Security ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ CoreFoundation Security ];
 
   # cargo uses git-rs which is made for a version of libgit2 from recent master that
   # is not compatible with the current version in nixpkgs.
@@ -58,8 +62,7 @@ rustPlatform.buildRustPackage {
   # Disable check phase as there are failures (4 tests fail)
   doCheck = false;
 
-  doInstallCheck = !stdenv.hostPlatform.isStatic &&
-    stdenv.hostPlatform.parsed.kernel.execFormat == lib.systems.parse.execFormats.elf;
+  doInstallCheck = !stdenv.hostPlatform.isStatic && stdenv.hostPlatform.isElf;
   installCheckPhase = ''
     runHook preInstallCheck
     readelf -a $out/bin/.cargo-wrapped | grep -F 'Shared library: [libcurl.so'
@@ -69,8 +72,14 @@ rustPlatform.buildRustPackage {
   meta = with lib; {
     homepage = "https://crates.io";
     description = "Downloads your Rust project's dependencies and builds your project";
-    maintainers = with maintainers; [ retrry ] ++ teams.rust.members;
+    mainProgram = "cargo";
+    maintainers = teams.rust.members;
     license = [ licenses.mit licenses.asl20 ];
     platforms = platforms.unix;
+    # https://github.com/alexcrichton/nghttp2-rs/issues/2
+    broken = stdenv.hostPlatform.isx86 && stdenv.buildPlatform != stdenv.hostPlatform;
   };
 }
+// lib.optionalAttrs (stdenv.buildPlatform.rust.rustcTarget != stdenv.hostPlatform.rust.rustcTarget) {
+  HOST_PKG_CONFIG_PATH="${pkgsBuildBuild.pkg-config}/bin/pkg-config";
+})

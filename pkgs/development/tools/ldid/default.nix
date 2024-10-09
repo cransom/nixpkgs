@@ -1,10 +1,9 @@
 { lib
 , stdenv
-, callPackage
 , fetchgit
 , libplist
 , libxml2
-, openssl_1_1
+, openssl
 , CoreFoundation
 , Security
 }:
@@ -16,7 +15,7 @@ stdenv.mkDerivation rec {
   src = fetchgit {
     url = "git://git.saurik.com/ldid.git";
     rev = "v${version}";
-    sha256 = "sha256-RM5pU3mrgyvwNfWKNvCT3UYVGKtVhD7ifgp8fq9xXiM=";
+    hash = "sha256-RM5pU3mrgyvwNfWKNvCT3UYVGKtVhD7ifgp8fq9xXiM=";
   };
 
   strictDeps = true;
@@ -24,8 +23,8 @@ stdenv.mkDerivation rec {
   buildInputs = [
     libplist
     libxml2
-    openssl_1_1
-  ] ++ lib.optionals stdenv.isDarwin [
+    openssl
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     CoreFoundation
     Security
   ];
@@ -34,7 +33,7 @@ stdenv.mkDerivation rec {
     "-lcrypto"
     "-lplist-2.0"
     "-lxml2"
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "-framework CoreFoundation"
     "-framework Security"
   ];

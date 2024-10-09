@@ -1,18 +1,20 @@
-{ lib, stdenv, fetchurl, fetchpatch, xorg, ncurses, freetype, fontconfig
+{ lib, stdenv, fetchurl, xorg, ncurses, freetype, fontconfig
 , pkg-config, makeWrapper, nixosTests, gitUpdater
-, nixfmt, nix, gnused, coreutils, enableDecLocator ? true }:
+, enableDecLocator ? true }:
 
 stdenv.mkDerivation rec {
   pname = "xterm";
-  version = "378";
+  version = "393";
 
   src = fetchurl {
     urls = [
       "ftp://ftp.invisible-island.net/xterm/${pname}-${version}.tgz"
       "https://invisible-mirror.net/archives/xterm/${pname}-${version}.tgz"
     ];
-    hash = "sha256-ZJ37/V7dDtnkfPjk2VO0sNPDC8KAFm38T/0Ulz/sPpI=";
+    hash = "sha256-3Dq/Uz1mrj20nmeDsOHinw5NBFtLPax5el6Tvic17Hs=";
   };
+
+  patches = [ ./sixel-256.support.patch ];
 
   strictDeps = true;
 
@@ -32,14 +34,6 @@ stdenv.mkDerivation rec {
     xorg.luit
   ];
 
-  patches = [ ./sixel-256.support.patch ]
-    ++ lib.optional stdenv.hostPlatform.isMusl (fetchpatch {
-      name = "posix-ptys.patch";
-      url =
-        "https://git.alpinelinux.org/aports/plain/community/xterm/posix-ptys.patch?id=3aa532e77875fa1db18c7fcb938b16647031bcc1";
-      sha256 = "0czgnsxkkmkrk1idw69qxbprh0jb4sw3c24zpnqq2v76jkl7zvlr";
-    });
-
   configureFlags = [
     "--enable-wide-chars"
     "--enable-256-color"
@@ -54,8 +48,13 @@ stdenv.mkDerivation rec {
     "--with-app-defaults=$(out)/lib/X11/app-defaults"
   ] ++ lib.optional enableDecLocator "--enable-dec-locator";
 
-  # Work around broken "plink.sh".
-  NIX_LDFLAGS = "-lXmu -lXt -lICE -lX11 -lfontconfig";
+  env = {
+    # Work around broken "plink.sh".
+    NIX_LDFLAGS = "-lXmu -lXt -lICE -lX11 -lfontconfig";
+  } // lib.optionalAttrs stdenv.hostPlatform.isMusl {
+    # Various symbols missing without this define: TAB3, NLDLY, CRDLY, BSDLY, FFDLY, CBAUD
+    NIX_CFLAGS_COMPILE = "-D_GNU_SOURCE";
+  };
 
   # Hack to get xterm built with the feature of releasing a possible setgid of 'utmp',
   # decided by the sysadmin to allow the xterm reporting to /var/run/utmp
@@ -93,7 +92,7 @@ stdenv.mkDerivation rec {
   meta = {
     homepage = "https://invisible-island.net/xterm";
     license = with lib.licenses; [ mit ];
-    maintainers = with lib.maintainers; [ nequissimus vrthra ];
+    maintainers = with lib.maintainers; [ nequissimus ];
     platforms = with lib.platforms; linux ++ darwin;
     changelog = "https://invisible-island.net/xterm/xterm.log.html";
   };

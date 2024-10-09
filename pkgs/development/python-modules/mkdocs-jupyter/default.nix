@@ -1,51 +1,58 @@
-{ buildPythonPackage
-, fetchPypi
-, ipykernel
-, jupytext
-, lib
-, mkdocs
-, mkdocs-material
-, nbconvert
-, pygments
-, pytestCheckHook
-, pytest-cov
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  hatchling,
+  ipykernel,
+  jupytext,
+  mkdocs,
+  mkdocs-material,
+  nbconvert,
+  pygments,
+  pytestCheckHook,
+  pytest-cov-stub,
+  pythonOlder,
 }:
 
 buildPythonPackage rec {
   pname = "mkdocs-jupyter";
-  version = "0.22.0";
+  version = "0.25.0";
+  pyproject = true;
+
+  disabled = pythonOlder "3.9";
 
   src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-WFzGm+pMufr2iYExl43JqbIlCR7UtghPWrZWUqXhIYU=";
+    pname = "mkdocs_jupyter";
+    inherit version;
+    hash = "sha256-4mwdNBkWvFf5bqP5PY0KiPx3yH1M7iIvZtIAd5jZJPU=";
   };
 
-  postPatch = ''
-    substituteInPlace setup.py \
-      --replace "nbconvert>=6.2.0,<7.0.0" "nbconvert>=6.2.0"
-    substituteInPlace mkdocs_jupyter/tests/test_base_usage.py \
-          --replace "[\"mkdocs\"," "[\"${mkdocs.out}/bin/mkdocs\","
-  '';
+  pythonRelaxDeps = [ "nbconvert" ];
 
-  propagatedBuildInputs = [
-    nbconvert
+  build-system = [ hatchling ];
+
+  dependencies = [
+    ipykernel
     jupytext
     mkdocs
     mkdocs-material
+    nbconvert
     pygments
-    ipykernel
+  ];
+
+  nativeCheckInputs = [
+    pytestCheckHook
+    pytest-cov-stub
   ];
 
   pythonImportsCheck = [ "mkdocs_jupyter" ];
 
-  nativeCheckInputs = [
-    pytest-cov
-    pytestCheckHook
-  ];
+  __darwinAllowLocalNetworking = true;
 
   meta = with lib; {
     description = "Use Jupyter Notebook in mkdocs";
     homepage = "https://github.com/danielfrg/mkdocs-jupyter";
+    changelog = "https://github.com/danielfrg/mkdocs-jupyter/blob/${version}/CHANGELOG.md";
     license = licenses.asl20;
     maintainers = with maintainers; [ net-mist ];
   };

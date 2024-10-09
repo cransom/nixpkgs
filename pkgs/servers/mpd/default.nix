@@ -9,7 +9,7 @@
 , audiofile, faad2, ffmpeg, flac, fluidsynth, game-music-emu
 , libmad, libmikmod, mpg123, libopus, libvorbis, lame
 # Filters
-, libsamplerate
+, libsamplerate, soxr
 # Outputs
 , alsa-lib, libjack2, libpulseaudio, libshout, pipewire
 # Misc
@@ -62,6 +62,7 @@ let
     lame          = [ lame ];
     # Filter plugins
     libsamplerate = [ libsamplerate ];
+    soxr          = [ soxr ];
     # Output plugins
     alsa          = [ alsa-lib ];
     jack          = [ libjack2 ];
@@ -96,8 +97,8 @@ let
       # Disable platform specific features if needed
       # using libmad to decode mp3 files on darwin is causing a segfault -- there
       # is probably a solution, but I'm disabling it for now
-      platformMask = lib.optionals stdenv.isDarwin [ "mad" "pulse" "jack" "smbclient" ]
-                  ++ lib.optionals (!stdenv.isLinux) [ "alsa" "pipewire" "io_uring" "systemd" "syslog" ];
+      platformMask = lib.optionals stdenv.hostPlatform.isDarwin [ "mad" "pulse" "jack" "smbclient" ]
+                  ++ lib.optionals (!stdenv.hostPlatform.isLinux) [ "alsa" "pipewire" "io_uring" "systemd" "syslog" ];
 
       knownFeatures = builtins.attrNames featureDependencies ++ builtins.attrNames nativeFeatureDependencies;
       platformFeatures = lib.subtractLists platformMask knownFeatures;
@@ -116,13 +117,13 @@ let
 
     in stdenv.mkDerivation rec {
       pname = "mpd";
-      version = "0.23.12";
+      version = "0.23.15";
 
       src = fetchFromGitHub {
         owner  = "MusicPlayerDaemon";
         repo   = "MPD";
         rev    = "v${version}";
-        sha256 = "sha256-BnEtSkZjUBK0flVttOrjkT4RCQh9F7+MDZGm2+MMrX8=";
+        sha256 = "sha256-QURq7ysSsxmBOtoBlPTPWiloXQpjEdxnM0L1fLwXfpw=";
       };
 
       buildInputs = [
@@ -136,7 +137,7 @@ let
         gtest
       ]
         ++ concatAttrVals features_ featureDependencies
-        ++ lib.optionals stdenv.isDarwin [ AudioToolbox AudioUnit ];
+        ++ lib.optionals stdenv.hostPlatform.isDarwin [ AudioToolbox AudioUnit ];
 
       nativeBuildInputs = [
         meson
@@ -147,7 +148,7 @@ let
 
       depsBuildBuild = [ buildPackages.stdenv.cc ];
 
-      postPatch = lib.optionalString (stdenv.isDarwin && lib.versionOlder stdenv.targetPlatform.darwinSdkVersion "12.0") ''
+      postPatch = lib.optionalString (stdenv.hostPlatform.isDarwin && lib.versionOlder stdenv.hostPlatform.darwinSdkVersion "12.0") ''
         substituteInPlace src/output/plugins/OSXOutputPlugin.cxx \
           --replace kAudioObjectPropertyElement{Main,Master} \
           --replace kAudioHardwareServiceDeviceProperty_Virtual{Main,Master}Volume
@@ -165,10 +166,7 @@ let
       outputs = [ "out" "doc" ]
         ++ lib.optional (builtins.elem "documentation" features_) "man";
 
-      # FIXME: workaround for Pipewire 0.3.64 deprecated API change, remove when fixed upstream
-      NIX_CFLAGS_COMPILE = [ "-DPW_ENABLE_DEPRECATED" ];
-
-      CXXFLAGS = lib.optionals stdenv.isDarwin [
+      CXXFLAGS = lib.optionals stdenv.hostPlatform.isDarwin [
         "-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0"
       ];
 
@@ -187,11 +185,12 @@ let
       passthru.tests.nixos = nixosTests.mpd;
 
       meta = with lib; {
-        description = "A flexible, powerful daemon for playing music";
+        description = "Flexible, powerful daemon for playing music";
         homepage    = "https://www.musicpd.org/";
         license     = licenses.gpl2Only;
-        maintainers = with maintainers; [ astsmtl ehmry tobim ];
+        maintainers = with maintainers; [ astsmtl tobim ];
         platforms   = platforms.unix;
+        mainProgram = "mpd";
 
         longDescription = ''
           Music Player Daemon (MPD) is a flexible, powerful daemon for playing
@@ -211,9 +210,9 @@ in
     "libmpdclient" "id3tag" "expat" "pcre"
     "yajl" "sqlite"
     "soundcloud" "qobuz"
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     "alsa" "systemd" "syslog" "io_uring"
-  ] ++ lib.optionals (!stdenv.isDarwin) [
+  ] ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
     "mad" "jack"
   ]; };
   mpdWithFeatures = run;

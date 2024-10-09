@@ -1,20 +1,20 @@
 { lib, stdenv, fetchFromGitHub, cmake, pkg-config, removeReferencesTo
-, alsaSupport ? !stdenv.isDarwin, alsa-lib
-, dbusSupport ? !stdenv.isDarwin, dbus
-, pipewireSupport ? !stdenv.isDarwin, pipewire
-, pulseSupport ? !stdenv.isDarwin, libpulseaudio
+, alsaSupport ? !stdenv.hostPlatform.isDarwin, alsa-lib
+, dbusSupport ? !stdenv.hostPlatform.isDarwin, dbus
+, pipewireSupport ? !stdenv.hostPlatform.isDarwin, pipewire
+, pulseSupport ? !stdenv.hostPlatform.isDarwin, libpulseaudio
 , CoreServices, AudioUnit, AudioToolbox
 }:
 
 stdenv.mkDerivation rec {
   pname = "openal-soft";
-  version = "1.22.2";
+  version = "1.23.1";
 
   src = fetchFromGitHub {
     owner = "kcat";
     repo = "openal-soft";
     rev = version;
-    sha256 = "sha256-MVM0qCZDWcO7/Hnco+0dBqzBLcWD279xjx0slxxlc4w=";
+    sha256 = "sha256-jwY1NzNJdWIvVv7TvJyg4cIGFLWGZhL3BkMI1NbOEG0=";
   };
 
   patches = [
@@ -35,7 +35,7 @@ stdenv.mkDerivation rec {
     ++ lib.optional dbusSupport dbus
     ++ lib.optional pipewireSupport pipewire
     ++ lib.optional pulseSupport libpulseaudio
-    ++ lib.optionals stdenv.isDarwin [ CoreServices AudioUnit AudioToolbox ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ CoreServices AudioUnit AudioToolbox ];
 
   cmakeFlags = [
     # Automatically links dependencies without having to rely on dlopen, thus

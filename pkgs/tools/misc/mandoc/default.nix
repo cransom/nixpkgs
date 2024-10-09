@@ -24,7 +24,7 @@ stdenv.mkDerivation rec {
   configureLocal = ''
     MANPATH_DEFAULT="/run/current-system/sw/share/man"
     MANPATH_BASE="$MANPATH_DEFAULT"
-    OSNAME="NixOS"
+    OSNAME="Nixpkgs"
     PREFIX="$out"
     LD_OHASH="-lutil"
     # Use symlinks instead of hardlinks (more commonly used in nixpkgs)
@@ -76,6 +76,7 @@ stdenv.mkDerivation rec {
     downloadPage = "http://mandoc.bsd.lv/snapshots/";
     license = licenses.bsd3;
     platforms = platforms.all;
-    maintainers = with maintainers; [ bb010g ramkromberg sternenseemann ];
+    maintainers = with maintainers; [ ramkromberg sternenseemann ];
+    mainProgram = "man";
   };
 }

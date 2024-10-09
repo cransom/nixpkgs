@@ -1,44 +1,47 @@
-{ lib, buildGoModule, fetchFromGitHub }:
+{ lib
+, buildGoModule
+, fetchFromGitHub
+}:
 
 buildGoModule rec {
   pname = "gomplate";
-  version = "3.11.3";
-  owner = "hairyhenderson";
-  rev = "v${version}";
+  version = "4.1.0";
 
   src = fetchFromGitHub {
-    inherit owner rev;
-    repo = pname;
-    sha256 = "sha256-NvTwiGyBHhHiVHdWeXnJONNkHkrvsc1zmHPK8rSHaQw=";
+    owner = "hairyhenderson";
+    repo = "gomplate";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-shbG0q86wlSjoCK2K7hNdUCwNPiQp94GWQJ1e71A1T0=";
   };
 
-  vendorSha256 = "sha256-BIcOErtlcnE70Mo6fjmA/btvSpw95RaKLqNWsgyJgpc=";
+  vendorHash = "sha256-UKqSKypAm6gt2JUCZh/DyfWo8uJeMp0M+4FiqwzzHIA=";
 
-  postPatch = ''
+  ldflags = [
+    "-s"
+    "-X github.com/${src.owner}/${pname}/v4/version.Version=${version}"
+  ];
+
+  preCheck = ''
     # some tests require network access
     rm net/net_test.go \
       internal/tests/integration/datasources_blob_test.go \
-      internal/tests/integration/datasources_git_test.go
+      internal/tests/integration/datasources_git_test.go \
+      render_test.go
     # some tests rely on external tools we'd rather not depend on
     rm internal/tests/integration/datasources_consul_test.go \
       internal/tests/integration/datasources_vault*_test.go
   '';
 
-  # TestInputDir_RespectsUlimit
-  preCheck = ''
-    ulimit -n 1024
+  postInstall = ''
+    rm $out/bin/gen
   '';
 
-  ldflags = [
-    "-s"
-    "-w"
-    "-X github.com/${owner}/${pname}/v3/version.Version=${rev}"
-  ];
-
   meta = with lib; {
-    description = "A flexible commandline tool for template rendering";
+    description = "Flexible commandline tool for template rendering";
+    mainProgram = "gomplate";
     homepage = "https://gomplate.ca/";
-    maintainers = with maintainers; [ ris jlesquembre ];
+    changelog = "https://github.com/hairyhenderson/gomplate/releases/tag/v${version}";
     license = licenses.mit;
+    maintainers = with maintainers; [ ris jlesquembre ];
   };
 }

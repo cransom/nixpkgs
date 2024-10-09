@@ -1,27 +1,40 @@
-{ lib, buildGoModule, fetchFromGitHub, installShellFiles }:
+{ lib
+, buildGoModule
+, fetchFromGitHub
+, installShellFiles
+, makeWrapper
+, pluginsDir ? null
+}:
 
 buildGoModule rec {
   pname = "helmfile";
-  version = "0.150.0";
+  version = "0.168.0";
 
   src = fetchFromGitHub {
     owner = "helmfile";
     repo = "helmfile";
     rev = "v${version}";
-    sha256 = "sha256-7wCt+JAuozsd+LifLArfPNwiKK/tDvgwpIwVCW4nU3Y=";
+    hash = "sha256-qpYTYOzQWhjuVANOPpLDsYZyhvRl6FnNQz5ssDZHohw=";
   };
 
-  vendorSha256 = "sha256-vLLS+/Xfnlt6cvkNvXKX3DVLku1Q4bRCiv2vMTfOnfw=";
+  vendorHash = "sha256-pCP5PxxOLlqQBmqufpo6G69v4M+NxMpTlIUY6TnclVA=";
+
+  proxyVendor = true; # darwin/linux hash mismatch
 
   doCheck = false;
 
   subPackages = [ "." ];
 
-  ldflags = [ "-s" "-w" "-X github.com/helmfile/helmfile/pkg/app/version.Version=${version}" ];
+  ldflags = [ "-s" "-w" "-X go.szostok.io/version.version=v${version}" ];
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs =
+    [ installShellFiles ] ++
+    lib.optional (pluginsDir != null) makeWrapper;
 
-  postInstall = ''
+  postInstall = lib.optionalString (pluginsDir != null) ''
+    wrapProgram $out/bin/helmfile \
+      --set HELM_PLUGINS "${pluginsDir}"
+  '' + ''
     installShellCompletion --cmd helmfile \
       --bash <($out/bin/helmfile completion bash) \
       --fish <($out/bin/helmfile completion fish) \
@@ -30,6 +43,7 @@ buildGoModule rec {
 
   meta = {
     description = "Declarative spec for deploying Helm charts";
+    mainProgram = "helmfile";
     longDescription = ''
       Declaratively deploy your Kubernetes manifests, Kustomize configs,
       and charts as Helm releases in one shot.
@@ -37,6 +51,5 @@ buildGoModule rec {
     homepage = "https://helmfile.readthedocs.io/";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ pneumaticat yurrriq ];
-    platforms = lib.platforms.unix;
   };
 }

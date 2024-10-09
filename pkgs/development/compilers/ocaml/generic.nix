@@ -3,7 +3,7 @@
 let
   versionNoPatch = "${toString major_version}.${toString minor_version}";
   version = "${versionNoPatch}.${toString patch_version}";
-  safeX11 = stdenv: !(stdenv.isAarch32 || stdenv.isMips || stdenv.hostPlatform.isStatic);
+  safeX11 = stdenv: !(stdenv.hostPlatform.isAarch32 || stdenv.hostPlatform.isMips || stdenv.hostPlatform.isStatic);
 in
 
 { lib, stdenv, fetchurl, ncurses, buildEnv, libunwind, fetchpatch
@@ -12,13 +12,15 @@ in
 , flambdaSupport ? false
 , spaceTimeSupport ? false
 , unsafeStringSupport ? false
+, framePointerSupport ? false
 }:
 
 assert useX11 -> safeX11 stdenv;
 assert aflSupport -> lib.versionAtLeast version "4.05";
 assert flambdaSupport -> lib.versionAtLeast version "4.03";
-assert spaceTimeSupport -> lib.versionAtLeast version "4.04";
+assert spaceTimeSupport -> lib.versionAtLeast version "4.04" && lib.versionOlder version "4.12";
 assert unsafeStringSupport -> lib.versionAtLeast version "4.06" && lib.versionOlder version "5.0";
+assert framePointerSupport -> lib.versionAtLeast version "4.01";
 
 let
   src = args.src or (fetchurl {
@@ -28,9 +30,14 @@ let
 in
 
 let
-   useNativeCompilers = !stdenv.isMips;
-   inherit (lib) optional optionals optionalString;
-   pname = "ocaml${optionalString aflSupport "+afl"}${optionalString spaceTimeSupport "+spacetime"}${optionalString flambdaSupport "+flambda"}";
+  useNativeCompilers = !stdenv.hostPlatform.isMips;
+  inherit (lib) optional optionals optionalString strings concatStrings;
+  pname = concatStrings [ "ocaml"
+    (optionalString aflSupport "+afl")
+    (optionalString spaceTimeSupport "+spacetime")
+    (optionalString flambdaSupport "+flambda")
+    (optionalString framePointerSupport "+fp")
+  ];
 in
 
 let
@@ -61,6 +68,7 @@ stdenv.mkDerivation (args // {
   ++ optional aflSupport (flags "--with-afl" "-afl-instrument")
   ++ optional flambdaSupport (flags "--enable-flambda" "-flambda")
   ++ optional spaceTimeSupport (flags "--enable-spacetime" "-spacetime")
+  ++ optional framePointerSupport (flags "--enable-frame-pointers" "-with-frame-pointers")
   ++ optionals unsafeStringSupport [
     "--disable-force-safe-string"
     "DEFAULT_STRING=unsafe"
@@ -76,7 +84,7 @@ stdenv.mkDerivation (args // {
   # `aarch64-apple-darwin-clang` while using assembler. However, such binary
   # does not exist. So, disable these configure flags on `aarch64-darwin`.
   # See #144785 for details.
-  configurePlatforms = lib.optionals (lib.versionAtLeast version "4.08" && !(stdenv.isDarwin && stdenv.isAarch64)) [ "host" "target" ];
+  configurePlatforms = lib.optionals (lib.versionAtLeast version "4.08" && !(stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64)) [ "host" "target" ];
   # x86_64-unknown-linux-musl-ld: -r and -pie may not be used together
   hardeningDisable = lib.optional (lib.versionAtLeast version "4.09" && stdenv.hostPlatform.isMusl) "pie"
     ++ lib.optional (lib.versionAtLeast version "5.0" && stdenv.cc.isClang) "strictoverflow"
@@ -86,6 +94,11 @@ stdenv.mkDerivation (args // {
   #  cp: cannot stat 'boot/ocamlrun': No such file or directory
   #  make[2]: *** [Makefile:199: backup] Error 1
   enableParallelBuilding = lib.versionAtLeast version "4.08";
+
+  # Workaround missing dependencies for install parallelism:
+  #  install: target '...-ocaml-4.14.0/lib/ocaml/threads': No such file or directory
+  #  make[1]: *** [Makefile:140: installopt] Error 1
+  enableParallelInstalling = false;
 
   # Workaround lack of parallelism support among top-level targets:
   # we place nixpkgs-specific targets to a separate file and set
@@ -101,7 +114,7 @@ stdenv.mkDerivation (args // {
   preConfigure = optionalString (lib.versionOlder version "4.04") ''
     CAT=$(type -tp cat)
     sed -e "s@/bin/cat@$CAT@" -i config/auto-aux/sharpbang
-  '' + optionalString (stdenv.isDarwin) ''
+  '' + optionalString (stdenv.hostPlatform.isDarwin) ''
     # Do what upstream does by default now: https://github.com/ocaml/ocaml/pull/10176
     # This is required for aarch64-darwin, everything else works as is.
     AS="${stdenv.cc}/bin/cc -c" ASPP="${stdenv.cc}/bin/cc -c"
@@ -144,7 +157,7 @@ stdenv.mkDerivation (args // {
     '';
 
     platforms = with platforms; linux ++ darwin;
-    broken = stdenv.isAarch64 && lib.versionOlder version (if stdenv.isDarwin then "4.10" else "4.02");
+    broken = stdenv.hostPlatform.isAarch64 && lib.versionOlder version (if stdenv.hostPlatform.isDarwin then "4.10" else "4.02");
   };
 
 })

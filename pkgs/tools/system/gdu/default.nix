@@ -1,48 +1,51 @@
-{ lib
-, stdenv
-, buildGoModule
-, fetchFromGitHub
-, installShellFiles
-, testers
-, gdu
+{
+  lib,
+  stdenv,
+  buildGoModule,
+  fetchFromGitHub,
+  installShellFiles,
+  testers,
+  gdu,
 }:
 
 buildGoModule rec {
   pname = "gdu";
-  version = "5.22.0";
+  version = "5.29.0";
 
   src = fetchFromGitHub {
     owner = "dundee";
-    repo = pname;
+    repo = "gdu";
     rev = "refs/tags/v${version}";
-    hash = "sha256-bWeMZ1tQkJsRJbolZBue9UzM4Qs7K5Rj5Z80Uotyb8I=";
+    hash = "sha256-w48I7HU/pA53Pq6ZVwtby+YvFddVUjj8orL40Gifqoo=";
   };
 
-  vendorHash = "sha256-UP6IdJLc93gRP4vwKKOJl3sNt4sOFeYXjvwk8QM+D48=";
+  vendorHash = "sha256-aKhHC3sPRyi/l9BxeUgx+3TdYulb0cI9WxuPvbLoswg=";
 
-  nativeBuildInputs = [
-    installShellFiles
-  ];
+  nativeBuildInputs = [ installShellFiles ];
 
   ldflags = [
     "-s"
     "-w"
-    "-X github.com/dundee/gdu/v${lib.versions.major version}/build.Version=${version}"
+    "-X=github.com/dundee/gdu/v${lib.versions.major version}/build.Version=${version}"
   ];
 
   postPatch = ''
-    substituteInPlace cmd/gdu/app/app_test.go --replace "development" "${version}"
+    substituteInPlace cmd/gdu/app/app_test.go \
+      --replace-fail "development" "${version}"
   '';
 
   postInstall = ''
     installManPage gdu.1
   '';
 
-  doCheck = !stdenv.isDarwin;
+  doCheck = !stdenv.hostPlatform.isDarwin;
 
-  passthru.tests.version = testers.testVersion {
-    package = gdu;
-  };
+  checkFlags = [
+    # https://github.com/dundee/gdu/issues/371
+    "-skip=TestStoredAnalyzer"
+  ];
+
+  passthru.tests.version = testers.testVersion { package = gdu; };
 
   meta = with lib; {
     description = "Disk usage analyzer with console interface";
@@ -54,6 +57,10 @@ buildGoModule rec {
     homepage = "https://github.com/dundee/gdu";
     changelog = "https://github.com/dundee/gdu/releases/tag/v${version}";
     license = with licenses; [ mit ];
-    maintainers = with maintainers; [ fab zowoq ];
+    maintainers = with maintainers; [
+      fab
+      zowoq
+    ];
+    mainProgram = "gdu";
   };
 }

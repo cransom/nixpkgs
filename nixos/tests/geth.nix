@@ -14,10 +14,14 @@ import ./make-test-python.nix ({ pkgs, ... }: {
     services.geth."testnet" = {
       enable = true;
       port = 30304;
-      network = "goerli";
+      network = "holesky";
       http = {
         enable = true;
         port = 18545;
+      };
+      authrpc = {
+        enable = true;
+        port = 18551;
       };
     };
   };
@@ -31,11 +35,11 @@ import ./make-test-python.nix ({ pkgs, ... }: {
     machine.wait_for_open_port(18545)
 
     machine.succeed(
-        'geth attach --exec eth.blockNumber http://localhost:8545 | grep \'^0$\' '
+        'geth attach --exec "eth.blockNumber" http://localhost:8545 | grep \'^0$\' '
     )
 
     machine.succeed(
-        'geth attach --exec "eth.chainId()" http://localhost:18545 | grep \'"0x5"\' '
+        'geth attach --exec "eth.blockNumber" http://localhost:18545 | grep \'^0$\' '
     )
   '';
 })

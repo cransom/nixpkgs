@@ -11,15 +11,15 @@
 , vkbasalt32
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "vkbasalt";
-  version = "0.3.2.8";
+  version = "0.3.2.10";
 
   src = fetchFromGitHub {
     owner = "DadSchoorse";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-/ynJ6zOVj6Si23Jsq6IHlw36KqBtMvjj41fos6irm9o=";
+    repo = "vkBasalt";
+    rev = "refs/tags/v${finalAttrs.version}";
+    hash = "sha256-GC6JKYnsfcUBg+CX6v7MyE4FeLmjadFwighaiyureDg=";
   };
 
   nativeBuildInputs = [ glslang meson ninja pkg-config ];
@@ -33,11 +33,19 @@ stdenv.mkDerivation rec {
       "$out/share/vulkan/implicit_layer.d/vkBasalt32.json"
   '';
 
+  # We need to give the different layers separate names or else the loader
+  # might try the 32-bit one first, fail and not attempt to load the 64-bit
+  # layer under the same name.
+  postFixup = ''
+    substituteInPlace "$out/share/vulkan/implicit_layer.d/vkBasalt.json" \
+      --replace "VK_LAYER_VKBASALT_post_processing" "VK_LAYER_VKBASALT_post_processing_${toString stdenv.hostPlatform.parsed.cpu.bits}"
+  '';
+
   meta = with lib; {
-    description = "A Vulkan post processing layer for Linux";
+    description = "Vulkan post processing layer for Linux";
     homepage = "https://github.com/DadSchoorse/vkBasalt";
     license = licenses.zlib;
     maintainers = with maintainers; [ kira-bruneau ];
     platforms = platforms.linux;
   };
-}
+})

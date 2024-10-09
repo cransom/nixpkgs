@@ -1,55 +1,50 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
 
-# build
-, antlr4
+  # build-system
+  setuptools,
 
-# propagates
-, antlr4-python3-runtime
-, dataclasses-json
-, pyyaml
+  # dependencies
+  pyyaml,
+  unicode-rbnf,
 
-# tests
-, pytestCheckHook
+  # tests
+  pytestCheckHook,
 }:
 
 let
   pname = "hassil";
-  version = "0.2.6";
+  version = "1.7.4";
 in
 buildPythonPackage {
   inherit pname version;
-  format = "setuptools";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-KbzGZLW+HrG4meOa0mVTh3jmt43gRxl9yN9asWMDxiY=";
+  disabled = pythonOlder "3.9";
+
+  src = fetchFromGitHub {
+    owner = "home-assistant";
+    repo = "hassil";
+    rev = "refs/tags/${version}";
+    hash = "sha256-FRP5iVE2KBiHVriWhnYxWFff0y4q2/gC9iO8ZzN3AbI=";
   };
 
-  nativeBuildInputs = [
-    antlr4
-  ];
+  build-system = [ setuptools ];
 
-  postPatch = ''
-    sed -i 's/antlr4-python3-runtime==.*/antlr4-python3-runtime/' requirements.txt
-    rm hassil/grammar/*.{tokens,interp}
-    antlr -Dlanguage=Python3 -visitor -o hassil/grammar/ *.g4
-  '';
-
-  propagatedBuildInputs = [
-    antlr4-python3-runtime
-    dataclasses-json
+  dependencies = [
     pyyaml
+    unicode-rbnf
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   meta = with lib; {
-    changelog  = "https://github.com/home-assistant/hassil/releases/tag/v${version}";
+    changelog = "https://github.com/home-assistant/hassil/blob/${version}/CHANGELOG.md";
     description = "Intent parsing for Home Assistant";
+    mainProgram = "hassil";
     homepage = "https://github.com/home-assistant/hassil";
     license = licenses.asl20;
     maintainers = teams.home-assistant.members;

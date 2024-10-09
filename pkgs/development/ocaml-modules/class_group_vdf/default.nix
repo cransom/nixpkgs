@@ -4,7 +4,7 @@
 , alcotest, bisect_ppx
 }:
 
-buildDunePackage rec {
+buildDunePackage (rec {
   pname = "class_group_vdf";
   version = "0.0.4";
   duneVersion = "3";
@@ -13,7 +13,7 @@ buildDunePackage rec {
     owner = "nomadic-labs/cryptography";
     repo = "ocaml-chia-vdf";
     rev = "v${version}";
-    sha256 = "sha256-KvpnX2DTUyfKARNWHC2lLBGH2Ou2GfRKjw05lu4jbBs=";
+    hash = "sha256-KvpnX2DTUyfKARNWHC2lLBGH2Ou2GfRKjw05lu4jbBs=";
   };
 
   minimalOCamlVersion = "4.08";
@@ -43,8 +43,13 @@ buildDunePackage rec {
   meta = {
     description = "Verifiable Delay Functions bindings to Chia's VDF";
     homepage = "https://gitlab.com/nomadic-labs/tezos";
-    broken = stdenv.isDarwin && stdenv.isx86_64;
     license = lib.licenses.mit;
     maintainers = [ lib.maintainers.ulrikstrid ];
   };
 }
+# Darwin sdk on intel target 10.12 (2016) at the time of writing. It is likely that host will be at least 10.14 (2018). This fix allow it to build and run on 10.14 and build on 10.12 (but don't run).
+// lib.optionalAttrs (lib.versionOlder stdenv.hostPlatform.darwinMinVersion "10.14" && stdenv.hostPlatform.isMacOS && stdenv.hostPlatform.isx86_64) {
+  preHook = ''
+    export MACOSX_DEPLOYMENT_TARGET=10.14
+  '';
+})

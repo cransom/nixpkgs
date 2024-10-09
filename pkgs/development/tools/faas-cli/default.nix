@@ -18,16 +18,16 @@ let
 in
 buildGoModule rec {
   pname = "faas-cli";
-  version = "0.15.9";
+  version = "0.16.36";
 
   src = fetchFromGitHub {
     owner = "openfaas";
     repo = "faas-cli";
     rev = version;
-    sha256 = "sha256-DudZOIwpsa7VaOQMJ2P/mfWHWYwESNhDfIUbtMV5Es0=";
+    sha256 = "sha256-5wvVwUj4JqHHZ/Q7s65nlCYENgHENma3IuUsNwcNJ9M=";
   };
 
-  vendorSha256 = null;
+  vendorHash = null;
 
   CGO_ENABLED = 0;
 
@@ -37,7 +37,7 @@ buildGoModule rec {
     "-s" "-w"
     "-X github.com/openfaas/faas-cli/version.GitCommit=ref/tags/${version}"
     "-X github.com/openfaas/faas-cli/version.Version=${version}"
-    "-X github.com/openfaas/faas-cli/commands.Platform=${faasPlatform stdenv.targetPlatform}"
+    "-X github.com/openfaas/faas-cli/commands.Platform=${faasPlatform stdenv.hostPlatform}"
   ];
 
   nativeBuildInputs = [ makeWrapper installShellFiles ];
@@ -57,7 +57,8 @@ buildGoModule rec {
   };
 
   meta = with lib; {
-    description = "Official CLI for OpenFaaS ";
+    description = "Official CLI for OpenFaaS";
+    mainProgram = "faas-cli";
     homepage = "https://github.com/openfaas/faas-cli";
     license = licenses.mit;
     maintainers = with maintainers; [ welteki techknowlogick ];

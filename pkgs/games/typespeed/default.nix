@@ -15,15 +15,16 @@ stdenv.mkDerivation rec {
   # gcc-10. Otherwise build fails as:
   #   ld: typespeed-typespeed.o:/build/typespeed-0.6.5/src/typespeed.h:69: multiple definition of
   #     `opt'; typespeed-file.o:/build/typespeed-0.6.5/src/typespeed.h:69: first defined here
-  NIX_CFLAGS_COMPILE = "-fcommon";
+  env.NIX_CFLAGS_COMPILE = "-fcommon";
 
   configureFlags = [ "--datadir=\${out}/share/" ];
   makeFlags = [ "CC=${stdenv.cc.targetPrefix}cc" ];
 
   meta = with lib; {
-    description = "A curses based typing game";
+    description = "Curses based typing game";
+    mainProgram = "typespeed";
     homepage = "https://typespeed.sourceforge.net/";
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     platforms = platforms.unix;
     maintainers = [ maintainers.auntie ];
   };

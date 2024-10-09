@@ -1,7 +1,6 @@
 { lib
 , stdenv
 , fetchurl
-, fetchpatch
 , meson
 , ninja
 , pkg-config
@@ -10,7 +9,8 @@
 , libcap_ng
 , libvirt
 , libxml2
-, withIntrospection ? stdenv.hostPlatform == stdenv.buildPlatform
+, buildPackages
+, withIntrospection ? lib.meta.availableOn stdenv.hostPlatform gobject-introspection && stdenv.hostPlatform.emulatorAvailable buildPackages
 , gobject-introspection
 , withDocs ? stdenv.hostPlatform == stdenv.buildPlatform
 , gtk-doc
@@ -19,22 +19,14 @@
 
 stdenv.mkDerivation rec {
   pname = "libvirt-glib";
-  version = "4.0.0";
+  version = "5.0.0";
 
   outputs = [ "out" "dev" ] ++ lib.optional withDocs "devdoc";
 
   src = fetchurl {
     url = "https://libvirt.org/sources/glib/${pname}-${version}.tar.xz";
-    sha256 = "hCP3Bp2qR2MHMh0cEeLswoU0DNMsqfwFIHdihD7erL0=";
+    sha256 = "m/7DRjgkFqNXXYcpm8ZBsqRkqlGf2bEofjGKpDovO4s=";
   };
-
-  patches = [
-    # Fix build with GLib 2.70
-    (fetchpatch {
-      url = "https://gitlab.com/libvirt/libvirt-glib/-/commit/9a34c4ea55e0246c34896e48b8ecd637bc559ac7.patch";
-      sha256 = "UU70uTi55EzPMuLYVKRzpVcd3WogeAtWAWEC2hWlR7k=";
-    })
-  ];
 
   nativeBuildInputs = [
     meson
@@ -53,10 +45,8 @@ stdenv.mkDerivation rec {
   buildInputs = [
     libvirt
     libxml2
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [
     libcap_ng
-  ] ++ lib.optionals withIntrospection [
-    gobject-introspection
   ];
 
   strictDeps = true;
@@ -69,9 +59,6 @@ stdenv.mkDerivation rec {
     (lib.mesonEnable "docs" withDocs)
     (lib.mesonEnable "introspection" withIntrospection)
   ];
-
-  # https://gitlab.com/libvirt/libvirt-glib/-/issues/4
-  NIX_CFLAGS_COMPILE = [ "-Wno-error=pointer-sign" ];
 
   meta = with lib; {
     description = "Library for working with virtual machines";

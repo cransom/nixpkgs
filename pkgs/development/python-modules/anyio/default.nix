@@ -1,90 +1,100 @@
-{ stdenv
-, lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchpatch
-, pythonOlder
-, setuptools
-, setuptools-scm
-, idna
-, sniffio
-, typing-extensions
-, curio
-, hypothesis
-, mock
-, pytest-mock
-, pytestCheckHook
-, trio
-, trustme
-, uvloop
+{
+  stdenv,
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pythonOlder,
+
+  # build-system
+  setuptools-scm,
+
+  # dependencies
+  exceptiongroup,
+  idna,
+  sniffio,
+  typing-extensions,
+
+  # optionals
+  trio,
+
+  # tests
+  hypothesis,
+  psutil,
+  pytest-mock,
+  pytest-xdist,
+  pytestCheckHook,
+  trustme,
+  uvloop,
+
+  # smoke tests
+  starlette,
 }:
 
 buildPythonPackage rec {
   pname = "anyio";
-  version = "3.6.2";
-  format = "pyproject";
-  disabled = pythonOlder "3.7";
+  version = "4.4.0";
+  pyproject = true;
+
+  disabled = pythonOlder "3.8";
 
   src = fetchFromGitHub {
     owner = "agronholm";
-    repo = pname;
-    rev = version;
-    hash = "sha256-bootaulvx9zmobQGDirsMz5uxuLeCD9ggAvYkPaKnWo=";
+    repo = "anyio";
+    rev = "refs/tags/${version}";
+    hash = "sha256-Sz/wWOT59T7LOAq68fBujgkTaY9ydMsIoSxeP3fBaoY=";
   };
 
-  preBuild = ''
-    export SETUPTOOLS_SCM_PRETEND_VERSION=${version}
-  '';
+  build-system = [ setuptools-scm ];
 
-  nativeBuildInputs = [
-    setuptools
-    setuptools-scm
-  ];
+  dependencies =
+    [
+      idna
+      sniffio
+    ]
+    ++ lib.optionals (pythonOlder "3.11") [
+      exceptiongroup
+      typing-extensions
+    ];
 
-  propagatedBuildInputs = [
-    idna
-    sniffio
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    typing-extensions
-  ];
-
-  # trustme uses pyopenssl
-  doCheck = !(stdenv.isDarwin && stdenv.isAarch64);
+  optional-dependencies = {
+    trio = [ trio ];
+  };
 
   nativeCheckInputs = [
-    curio
+    exceptiongroup
     hypothesis
+    psutil
     pytest-mock
+    pytest-xdist
     pytestCheckHook
-    trio
     trustme
     uvloop
-  ] ++ lib.optionals (pythonOlder "3.8") [
-    mock
-  ];
+  ] ++ optional-dependencies.trio;
 
   pytestFlagsArray = [
-    "-W" "ignore::trio.TrioDeprecationWarning"
+    "-W"
+    "ignore::trio.TrioDeprecationWarning"
+    "-m"
+    "'not network'"
   ];
 
-  disabledTests = [
-    # block devices access
+  disabledTests = lib.optionals stdenv.hostPlatform.isDarwin [
+    # PermissionError: [Errno 1] Operation not permitted: '/dev/console'
     "test_is_block_device"
-    # INTERNALERROR> AttributeError: 'NonBaseMultiError' object has no attribute '_exceptions'. Did you mean: 'exceptions'?
-    "test_exception_group_children"
-    "test_exception_group_host"
-    "test_exception_group_filtering"
   ];
 
   disabledTestPaths = [
     # lots of DNS lookups
     "tests/test_sockets.py"
-  ] ++ lib.optionals stdenv.isDarwin [
-    # darwin sandboxing limitations
-    "tests/streams/test_tls.py"
   ];
 
+  __darwinAllowLocalNetworking = true;
+
   pythonImportsCheck = [ "anyio" ];
+
+  passthru.tests = {
+    inherit starlette;
+  };
 
   meta = with lib; {
     changelog = "https://github.com/agronholm/anyio/blob/${src.rev}/docs/versionhistory.rst";

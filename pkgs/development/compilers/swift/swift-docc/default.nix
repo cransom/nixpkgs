@@ -24,9 +24,15 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [ swift swiftpm ];
   buildInputs = [ Foundation XCTest ]
-    ++ lib.optionals stdenv.isDarwin [ CryptoKit LocalAuthentication ];
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [ CryptoKit LocalAuthentication ];
 
   configurePhase = generated.configure;
+
+  # We only install the docc binary, so don't need the other products.
+  # This works around a failure building generate-symbol-graph:
+  #  Sources/generate-symbol-graph/main.swift:13:18: error: module 'SwiftDocC' was not compiled for testing
+  # TODO: Figure out the cause. It doesn't seem to happen outside Nixpkgs.
+  swiftpmFlags = [ "--product docc" ];
 
   # TODO: Tests depend on indexstore-db being provided by an existing Swift
   # toolchain. (ie. looks for `../lib/libIndexStore.so` relative to swiftc.
@@ -45,9 +51,10 @@ stdenv.mkDerivation {
 
   meta = {
     description = "Documentation compiler for Swift";
+    mainProgram = "docc";
     homepage = "https://github.com/apple/swift-docc";
     platforms = with lib.platforms; linux ++ darwin;
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ dtzWill trepetti dduan trundle stephank ];
+    maintainers = lib.teams.swift.members;
   };
 }

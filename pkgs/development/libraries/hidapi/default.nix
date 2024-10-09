@@ -12,22 +12,22 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "hidapi";
-  version = "0.12.0";
+  version = "0.14.0";
 
   src = fetchFromGitHub {
     owner = "libusb";
     repo = "hidapi";
-    rev = "${finalAttrs.pname}-${finalAttrs.version}";
-    sha256 = "sha256-SMhlcB7LcViC6UFVYACjunxsGkvSOKC3mbLBH4XQSzM=";
+    rev = "hidapi-${finalAttrs.version}";
+    sha256 = "sha256-p3uzBq5VxxQbVuy1lEHEEQdxXwnhQgJDIyAAWjVWNIg=";
   };
 
   nativeBuildInputs = [ cmake pkg-config ];
 
-  buildInputs = lib.optionals stdenv.isLinux [ libusb1 udev ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ libusb1 udev ];
 
   enableParallelBuilding = true;
 
-  propagatedBuildInputs = lib.optionals stdenv.isDarwin [ Cocoa IOKit ];
+  propagatedBuildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ Cocoa IOKit ];
 
   passthru.tests.pkg-config = testers.testMetaPkgConfig finalAttrs.finalPackage;
 
@@ -37,12 +37,12 @@ stdenv.mkDerivation (finalAttrs: {
     maintainers = with maintainers; [ prusnak ];
     # You can choose between GPLv3, BSD or HIDAPI license (even more liberal)
     license = with licenses; [ bsd3 /* or */ gpl3Only ] ;
-    pkgConfigModules = lib.optionals stdenv.isDarwin [
+    pkgConfigModules = lib.optionals stdenv.hostPlatform.isDarwin [
       "hidapi"
-    ] ++ lib.optionals stdenv.isLinux [
+    ] ++ lib.optionals stdenv.hostPlatform.isLinux [
       "hidapi-hidraw"
       "hidapi-libusb"
     ];
-    platforms = platforms.unix;
+    platforms = platforms.unix ++ platforms.windows;
   };
 })

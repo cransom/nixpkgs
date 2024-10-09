@@ -1,7 +1,7 @@
 {
-  lib, mkDerivation, propagate,
+  lib, stdenv, mkDerivation, propagate,
   extra-cmake-modules, kcoreaddons, qttools,
-  enablePolkit ? true, polkit-qt
+  enablePolkit ? stdenv.hostPlatform.isLinux, polkit-qt
 }:
 
 mkDerivation {

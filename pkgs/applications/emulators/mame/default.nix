@@ -15,7 +15,6 @@
 , libjpeg
 , libpcap
 , libpulseaudio
-, lua5_3
 , makeDesktopItem
 , makeWrapper
 , papirus-icon-theme
@@ -39,14 +38,14 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "mame";
-  version = "0.251";
+  version = "0.270";
   srcVersion = builtins.replaceStrings [ "." ] [ "" ] version;
 
   src = fetchFromGitHub {
     owner = "mamedev";
     repo = "mame";
     rev = "mame${srcVersion}";
-    hash = "sha256-x+QV4gunnERBHyYB2fXJ2LvMv437Z2omvk+fYkmZfqA=";
+    hash = "sha256-l1mgkPhYO/U/77veC0Mpyzr6hzz/FSkn+4GMAdLSfOk=";
   };
 
   outputs = [ "out" "tools" ];
@@ -61,7 +60,8 @@ stdenv.mkDerivation rec {
     "USE_SYSTEM_LIB_FLAC=1"
     "USE_SYSTEM_LIB_GLM=1"
     "USE_SYSTEM_LIB_JPEG=1"
-    "USE_SYSTEM_LIB_LUA=1"
+    # https://www.mamedev.org/?p=523
+    # "USE_SYSTEM_LIB_LUA=1"
     "USE_SYSTEM_LIB_PORTAUDIO=1"
     "USE_SYSTEM_LIB_PORTMIDI=1"
     "USE_SYSTEM_LIB_PUGIXML=1"
@@ -78,7 +78,6 @@ stdenv.mkDerivation rec {
     expat
     zlib
     flac
-    lua5_3
     portmidi
     portaudio
     utf8proc
@@ -91,8 +90,8 @@ stdenv.mkDerivation rec {
     sqlite
     qtbase
   ]
-  ++ lib.optionals stdenv.isLinux [ alsa-lib libpulseaudio libXinerama libXi fontconfig ]
-  ++ lib.optionals stdenv.isDarwin [ libpcap CoreAudioKit ForceFeedback ];
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ alsa-lib libpulseaudio libXinerama libXi fontconfig ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [ libpcap CoreAudioKit ForceFeedback ];
 
   nativeBuildInputs = [
     copyDesktopItems
@@ -116,10 +115,6 @@ stdenv.mkDerivation rec {
     substituteInPlace src/emu/emuopts.cpp \
       --subst-var-by mamePath "$out/opt/mame"
   '';
-
-  NIX_CFLAGS_COMPILE = [
-    "-Wno-error=use-after-free"
-  ];
 
   desktopItems = [
     (makeDesktopItem {
@@ -181,7 +176,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://www.mamedev.org/";
-    description = "A multi-purpose emulation framework";
+    description = "Multi-purpose emulation framework";
     longDescription = ''
       MAME's purpose is to preserve decades of software history. As electronic
       technology continues to rush forward, MAME prevents this important
@@ -200,6 +195,7 @@ stdenv.mkDerivation rec {
     license = with licenses; [ bsd3 gpl2Plus ];
     maintainers = with maintainers; [ thiagokokada ];
     platforms = platforms.unix;
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
+    mainProgram = "mame";
   };
 }

@@ -1,32 +1,56 @@
-{ lib
-, fetchPypi
-, buildPythonPackage
-, django
-, django_compat
-, pytest-django
-, pytestCheckHook
+{
+  lib,
+  fetchFromGitHub,
+  fetchNpmDeps,
+  buildPythonPackage,
+  nix-update-script,
+
+  # build-system
+  flit-gettext,
+  flit-scm,
+  nodejs,
+  npmHooks,
+
+  # dependencies
+  django,
+
+  # tests
+  pytest-django,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "django-hijack";
-  version = "3.2.6";
+  version = "3.6.1";
+  pyproject = true;
 
-  # the wheel comes with pre-built assets, allowing us to avoid fighting
-  # with npm/webpack/gettext to build them ourselves.
-  format = "wheel";
-
-  src = fetchPypi {
-    inherit version format;
-    pname = "django_hijack";
-    dist = "py3";
-    python = "py3";
-    hash = "sha256-xFPZ03II1814+bZ5gx7GD/AxYMiLuH6awfSeXEraOHQ=";
+  src = fetchFromGitHub {
+    owner = "django-hijack";
+    repo = "django-hijack";
+    rev = "refs/tags/${version}";
+    hash = "sha256-xnRVoCs+TyAbvFSBD58MJhwLw7ecKpMFuWewAgmnzqk=";
   };
 
-  propagatedBuildInputs = [
-    django
-    django_compat
+  postPatch = ''
+    sed -i "/addopts/d" pyproject.toml
+
+  # missing integrity hashes for yocto-queue, yargs-parser
+    cp ${./package-lock.json} package-lock.json
+  '';
+
+  npmDeps = fetchNpmDeps {
+    inherit src postPatch;
+    hash = "sha256-npAFpdqGdttE4facBimS/y2SqwnCvOHJhd60SPR/IaA=";
+  };
+
+  build-system = [
+    flit-gettext
+    flit-scm
+    nodejs
+    npmHooks.npmConfigHook
   ];
+
+  dependencies = [ django ];
 
   nativeCheckInputs = [
     pytestCheckHook
@@ -34,17 +58,15 @@ buildPythonPackage rec {
   ];
 
   preCheck = ''
-    export DJANGO_SETTINGS_MODULE='hijack.tests.test_app.settings'
+    export DJANGO_SETTINGS_MODULE=tests.test_app.settings
   '';
 
-  pytestFlagsArray = [
-    "--pyargs"
-    "hijack"
-  ];
+  # needed for npmDeps update
+  passthru.updateScript = nix-update-script { };
 
   meta = with lib; {
     description = "Allows superusers to hijack (=login as) and work on behalf of another user";
-    homepage = "https://github.com/arteria/django-hijack";
+    homepage = "https://github.com/django-hijack/django-hijack";
     changelog = "https://github.com/django-hijack/django-hijack/releases/tag/${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ ris ];

@@ -5,15 +5,25 @@
 
 python3.pkgs.buildPythonApplication rec {
   pname = "commix";
-  version = "3.6";
-  format = "setuptools";
+  version = "3.9";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "commixproject";
-    repo = pname;
+    repo = "commix";
     rev = "refs/tags/v${version}";
-    hash = "sha256-QdhJp7oUqOY8Z36haIrHgP4hVGaFXlOxNVg1ams7uhg=";
+    hash = "sha256-HX+gEL9nmq9R1GFw8xQaa7kBmW7R0IepitM08bIf3vY=";
   };
+
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace-warn "-stable" ""
+  '';
+
+
+  nativeBuildInputs = with python3.pkgs; [
+    setuptools
+  ];
 
   postInstall = ''
     # Helper files are not handled by setup.py
@@ -26,6 +36,7 @@ python3.pkgs.buildPythonApplication rec {
 
   meta = with lib; {
     description = "Automated Command Injection Exploitation Tool";
+    mainProgram = "commix";
     homepage = "https://github.com/commixproject/commix";
     changelog = "https://github.com/commixproject/commix/releases/tag/v${version}";
     license = with licenses; [ gpl3Plus ];

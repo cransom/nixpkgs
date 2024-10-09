@@ -5,9 +5,11 @@
 , asciidoctor
 , buildah
 , buildah-unwrapped
+, cargo
 , libiconv
 , libkrun
 , makeWrapper
+, rustc
 , sigtool
 }:
 
@@ -27,15 +29,15 @@ stdenv.mkDerivation rec {
     hash = "sha256-Y0FNi/+HuN5SqexHTKjcW6lEaeis7xZDYc2/FOAANIA=";
   };
 
-  nativeBuildInputs = with rustPlatform; [
-    cargoSetupHook
-    rust.cargo
-    rust.rustc
+  nativeBuildInputs = [
+    rustPlatform.cargoSetupHook
+    cargo
+    rustc
     asciidoctor
     makeWrapper
-  ] ++ lib.optionals stdenv.isDarwin [ sigtool ];
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [ sigtool ];
 
-  buildInputs = [ libkrun ] ++ lib.optionals stdenv.isDarwin [
+  buildInputs = [ libkrun ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     libiconv
   ];
 
@@ -55,7 +57,7 @@ stdenv.mkDerivation rec {
 
   # It attaches entitlements with codesign and strip removes those,
   # voiding the entitlements and making it non-operational.
-  dontStrip = stdenv.isDarwin;
+  dontStrip = stdenv.hostPlatform.isDarwin;
 
   postFixup = ''
     wrapProgram $out/bin/krunvm \
@@ -63,10 +65,11 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "A CLI-based utility for creating microVMs from OCI images";
+    description = "CLI-based utility for creating microVMs from OCI images";
     homepage = "https://github.com/containers/krunvm";
     license = licenses.asl20;
     maintainers = with maintainers; [ nickcao ];
     platforms = libkrun.meta.platforms;
+    mainProgram = "krunvm";
   };
 }

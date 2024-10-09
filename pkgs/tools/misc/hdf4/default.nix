@@ -5,13 +5,16 @@
 , fixDarwinDylibNames
 , cmake
 , libjpeg
-, uselibtirpc ? stdenv.isLinux
+, uselibtirpc ? stdenv.hostPlatform.isLinux
 , libtirpc
 , zlib
 , szipSupport ? false
 , szip
 , javaSupport ? false
 , jdk
+, fortranSupport ? false
+, gfortran
+, netcdfSupport ? false
 }:
 stdenv.mkDerivation rec {
   pname = "hdf";
@@ -48,9 +51,9 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     cmake
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     fixDarwinDylibNames
-  ];
+  ] ++ lib.optional fortranSupport gfortran;
 
   buildInputs = [
     libjpeg
@@ -75,9 +78,8 @@ stdenv.mkDerivation rec {
     "-DHDF4_BUILD_UTILS=ON"
     "-DHDF4_BUILD_WITH_INSTALL_NAME=OFF"
     "-DHDF4_ENABLE_JPEG_LIB_SUPPORT=ON"
-    "-DHDF4_ENABLE_NETCDF=OFF"
+    "-DHDF4_ENABLE_NETCDF=${if netcdfSupport then "ON" else "OFF"}"
     "-DHDF4_ENABLE_Z_LIB_SUPPORT=ON"
-    "-DHDF4_BUILD_FORTRAN=OFF"
     "-DJPEG_DIR=${libjpeg}"
   ] ++ lib.optionals javaSupport [
     "-DHDF4_BUILD_JAVA=ON"
@@ -85,11 +87,24 @@ stdenv.mkDerivation rec {
   ] ++ lib.optionals szipSupport [
     "-DHDF4_ENABLE_SZIP_ENCODING=ON"
     "-DHDF4_ENABLE_SZIP_SUPPORT=ON"
-  ];
+  ] ++ (if fortranSupport
+  then [
+    "-DHDF4_BUILD_FORTRAN=ON"
+    "-DCMAKE_Fortran_FLAGS=-fallow-argument-mismatch"
+  ]
+  else [ "-DHDF4_BUILD_FORTRAN=OFF" ]
+  );
+
+  env = lib.optionalAttrs stdenv.cc.isClang {
+    NIX_CFLAGS_COMPILE = toString [
+      "-Wno-error=implicit-function-declaration"
+      "-Wno-error=implicit-int"
+    ];
+  };
 
   doCheck = true;
 
-  excludedTests = lib.optionals stdenv.isDarwin [
+  excludedTests = lib.optionals stdenv.hostPlatform.isDarwin [
     "MFHDF_TEST-hdftest"
     "MFHDF_TEST-hdftest-shared"
     "HDP-dumpsds-18"

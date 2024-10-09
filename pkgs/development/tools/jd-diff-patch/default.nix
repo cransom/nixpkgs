@@ -2,19 +2,19 @@
 
 buildGoModule rec {
   pname = "jd-diff-patch";
-  version = "1.6.1";
+  version = "1.9.1";
 
   src = fetchFromGitHub {
     owner  = "josephburnett";
     repo   = "jd";
     rev    = "v${version}";
-    sha256 = "sha256-Ti7eElLplnYGP7v1VuGpyeZ3ZIau6Ffx4ACMBDIBROw=";
+    sha256 = "sha256-qq/Y2/NGK3xsgljT0D9+dD1D1UfjB9Niay81nQJ4gX0=";
   };
 
   # not including web ui
   excludedPackages = [ "gae" "pack" ];
 
-  vendorSha256 = null;
+  vendorHash = null;
 
   meta = with lib; {
     description = "Commandline utility and Go library for diffing and patching JSON values";

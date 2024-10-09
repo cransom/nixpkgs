@@ -14,7 +14,7 @@
 , libnotify
 , pango
 , webkitgtk
-, wrapGAppsHook
+, wrapGAppsHook3
 
   # check inputs
 , xvfb-run
@@ -32,19 +32,20 @@
 , pypresence
 , pyyaml
 , requests
+, protobuf
+, moddb
 
   # commands that lutris needs
 , xrandr
 , pciutils
 , psmisc
-, glxinfo
+, mesa-demos
 , vulkan-tools
 , xboxdrv
 , pulseaudio
 , p7zip
 , xgamma
 , libstrangle
-, wine
 , fluidsynth
 , xorgserver
 , xorg
@@ -57,14 +58,13 @@ let
     xrandr
     pciutils
     psmisc
-    glxinfo
+    mesa-demos
     vulkan-tools
     xboxdrv
     pulseaudio
     p7zip
     xgamma
     libstrangle
-    wine
     fluidsynth
     xorgserver
     xorg.setxkbmap
@@ -75,22 +75,21 @@ let
 in
 buildPythonApplication rec {
   pname = "lutris-unwrapped";
-  version = "0.5.12";
+  version = "0.5.17";
 
   src = fetchFromGitHub {
     owner = "lutris";
     repo = "lutris";
-    rev = "refs/tags/v${version}";
-    sha256 = "sha256-rsiXm7L/M85ot6NrTyy//lMRFlLPJYve9y6Erg9Ugxg=";
+    rev = "v${version}";
+    hash = "sha256-Tr5k5LU0s75+1B17oK8tlgA6SlS1SHyyLS6UBKadUmw=";
   };
 
-  nativeBuildInputs = [ wrapGAppsHook ];
+  nativeBuildInputs = [ wrapGAppsHook3 gobject-introspection ];
   buildInputs = [
     atk
     gdk-pixbuf
     glib-networking
     gnome-desktop
-    gobject-introspection
     gtk3
     libnotify
     pango
@@ -116,11 +115,13 @@ buildPythonApplication rec {
     pypresence
     pyyaml
     requests
+    protobuf
+    moddb
   ];
 
   postPatch = ''
     substituteInPlace lutris/util/magic.py \
-      --replace "'libmagic.so.1'" "'${lib.getLib file}/lib/libmagic.so.1'"
+      --replace '"libmagic.so.1"' "'${lib.getLib file}/lib/libmagic.so.1'"
   '';
 
   nativeCheckInputs = [ xvfb-run nose2 flake8 ] ++ requiredTools;
@@ -139,9 +140,6 @@ buildPythonApplication rec {
     "--prefix PATH : ${lib.makeBinPath requiredTools}"
     "\${gappsWrapperArgs[@]}"
   ];
-  # needed for glib-schemas to work correctly (will crash on dialogues otherwise)
-  # see https://github.com/NixOS/nixpkgs/issues/56943
-  strictDeps = false;
 
   meta = with lib; {
     homepage = "https://lutris.net";
@@ -149,5 +147,6 @@ buildPythonApplication rec {
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ Madouura ];
     platforms = platforms.linux;
+    mainProgram = "lutris";
   };
 }

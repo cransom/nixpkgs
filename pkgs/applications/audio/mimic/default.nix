@@ -38,7 +38,7 @@ stdenv.mkDerivation rec {
     pcre2
   ] ++ lib.optional pulseaudioSupport libpulseaudio;
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
     # Needed with GCC 12
     "-Wno-error=free-nonheap-object"
   ];
@@ -53,6 +53,6 @@ stdenv.mkDerivation rec {
     homepage = "https://mimic.mycroft.ai/";
     license = lib.licenses.free;
     platforms = lib.platforms.linux;
-    maintainers = [ lib.maintainers.noneucat ];
+    maintainers = [ lib.maintainers.fx-chun ];
   };
 }

@@ -1,9 +1,7 @@
 { stdenv
 , lib
-, callPackage
 , fetchFromGitHub
 , cmake
-, pkg-config
 , python3
 , caf
 , openssl
@@ -14,8 +12,8 @@ let
   src-cmake = fetchFromGitHub {
     owner = "zeek";
     repo = "cmake";
-    rev = "0b7a543554622600bc0a42b57a22f291a4fbd86c";
-    hash = "sha256-kaBOBTpfR3XyuF4PW5NQKca/UhXXxJJcXVsErFU1VYY=";
+    rev = "1be78cc8a889d95db047f473a0f48e0baee49f33";
+    hash = "sha256-zcXWP8CHx0RSDGpRTrYD99lHlqSbvaliXrtFowPfhBk=";
   };
   src-3rdparty = fetchFromGitHub {
     owner = "zeek";
@@ -24,26 +22,22 @@ let
     hash = "sha256-AVaKcRjF5ZiSR8aPSLBzSTeWVwGWW/aSyQJcN0Yhza0=";
   };
   caf' = caf.overrideAttrs (old: {
-    version = "unstable-2022-11-17-zeek";
+    version = "unstable-2024-01-07-zeek";
     src = fetchFromGitHub {
       owner = "zeek";
       repo = "actor-framework";
-      rev = "dbb68b4573736d7aeb69268cc73aa766c998b3dd";
-      hash = "sha256-RV2mKF3B47h/hDgK/D1UJN/ll2G5rcPkHaLVY1/C/Pg=";
+      rev = "e3048cdd13e085c97870a55eb1f9de04e25320f3";
+      hash = "sha256-uisoYXiZbFQa/TfWGRrCJ23MX4bg8Ds86ffC8sZSRNQ=";
     };
-    checkPhase = ''
-      runHook preCheck
-      libcaf_core/caf-core-test
-      libcaf_io/caf-io-test
-      libcaf_openssl/caf-openssl-test
-      libcaf_net/caf-net-test --not-suites='net.*'
-      runHook postCheck
-    '';
+    cmakeFlags = old.cmakeFlags ++ [
+      "-DCAF_ENABLE_TESTING=OFF"
+    ];
+    doCheck = false;
   });
 in
 stdenv.mkDerivation rec {
   pname = "zeek-broker";
-  version = "2.4.2";
+  version = "6.2.0";
   outputs = [ "out" "py" ];
 
   strictDeps = true;
@@ -52,7 +46,7 @@ stdenv.mkDerivation rec {
     owner = "zeek";
     repo = "broker";
     rev = "v${version}";
-    hash = "sha256-y07fJEVPDGPv5VThE45SwM342VS6LnEtMvazZHadM/k=";
+    hash = "sha256-SG5TzozKvYc7qcEPJgiEtsxgzdZbbJt90lmuUbCPyv0=";
   };
   postUnpack = ''
     rmdir $sourceRoot/cmake $sourceRoot/3rdparty
@@ -68,7 +62,11 @@ stdenv.mkDerivation rec {
     ./0001-Fix-include-path-in-exported-CMake-targets.patch
   ];
 
-  nativeBuildInputs = [ cmake ];
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    substituteInPlace bindings/python/CMakeLists.txt --replace " -u -r" ""
+  '';
+
+  nativeBuildInputs = [ cmake python3 ];
   buildInputs = [ openssl python3.pkgs.pybind11 ];
   propagatedBuildInputs = [ caf' ];
 
@@ -78,8 +76,11 @@ stdenv.mkDerivation rec {
     "-DPY_MOD_INSTALL_DIR=${placeholder "py"}/${python3.sitePackages}/"
   ];
 
+  env.NIX_CFLAGS_COMPILE = lib.optionalString stdenv.hostPlatform.isDarwin "-faligned-allocation";
+
   meta = with lib; {
     description = "Zeek's Messaging Library";
+    mainProgram = "broker-benchmark";
     homepage = "https://github.com/zeek/broker";
     license = licenses.bsd3;
     platforms = platforms.unix;

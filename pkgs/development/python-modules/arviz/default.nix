@@ -1,61 +1,71 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, emcee
-, matplotlib
-, netcdf4
-, numba
-, numpy
-, pandas
-, pytest
-, setuptools
-, cloudpickle
-, pytestCheckHook
-, scipy
-, packaging
-, typing-extensions
-, pythonOlder
-, xarray
-, xarray-einstats
-, zarr
-, ffmpeg
-, h5py
-, jaxlib
-, torchvision
-, jax
-  # , pymc3 (circular dependency)
-, pyro-ppl
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+
+  # build-system
+  packaging,
+  setuptools,
+
+  # dependencies
+  h5netcdf,
+  matplotlib,
+  numpy,
+  pandas,
+  scipy,
+  typing-extensions,
+  xarray,
+  xarray-einstats,
+
+  # checks
+  bokeh,
+  cloudpickle,
+  emcee,
+  ffmpeg,
+  h5py,
+  jax,
+  jaxlib,
+  numba,
+  numpyro,
+  #, pymc3 (circular dependency)
+  pyro-ppl,
   #, pystan (not packaged)
-, numpyro
+  pytestCheckHook,
+  torchvision,
+  zarr,
 }:
 
 buildPythonPackage rec {
   pname = "arviz";
-  version = "0.14.0";
-  format = "setuptools";
-
-  disabled = pythonOlder "3.7";
+  version = "0.20.0";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "arviz-devs";
-    repo = pname;
-    rev = "refs/tags/${version}";
-    hash = "sha256-YLNczcgVmcctNc620Ap9yQtQTwF1LREtL57JIWS/DKQ=";
+    repo = "arviz";
+    rev = "refs/tags/v${version}";
+    hash = "sha256-6toqOGwk8YbatfiDCTEG4r0z3zZAA8zcNVZJqqssYrY=";
   };
 
-  propagatedBuildInputs = [
-    matplotlib
-    netcdf4
-    numpy
+  build-system = [
     packaging
+    setuptools
+  ];
+
+  dependencies = [
+    h5netcdf
+    matplotlib
+    numpy
     pandas
     scipy
-    setuptools
+    typing-extensions
     xarray
     xarray-einstats
   ];
 
   nativeCheckInputs = [
+    bokeh
     cloudpickle
     emcee
     ffmpeg
@@ -76,17 +86,11 @@ buildPythonPackage rec {
     export HOME=$(mktemp -d);
   '';
 
-  pytestFlagsArray = [
-    "arviz/tests/base_tests/"
-  ];
-
-  disabledTestPaths = [
-    # Remove tests as dependency creates a circular dependency
-    "arviz/tests/external_tests/test_data_pymc.py"
-  ];
+  pytestFlagsArray = [ "arviz/tests/base_tests/" ];
 
   disabledTests = [
     # Tests require network access
+    "test_plot_ppc_transposed"
     "test_plot_separation"
     "test_plot_trace_legend"
     "test_cov"
@@ -96,14 +100,16 @@ buildPythonPackage rec {
     "test_plot_pair"
   ];
 
-  pythonImportsCheck = [
-    "arviz"
-  ];
+  # Tests segfault on darwin
+  doCheck = !stdenv.isDarwin;
 
-  meta = with lib; {
+  pythonImportsCheck = [ "arviz" ];
+
+  meta = {
     description = "Library for exploratory analysis of Bayesian models";
     homepage = "https://arviz-devs.github.io/arviz/";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ omnipotententity ];
+    changelog = "https://github.com/arviz-devs/arviz/blob/v${version}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ omnipotententity ];
   };
 }

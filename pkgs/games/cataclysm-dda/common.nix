@@ -8,10 +8,10 @@ let
   inherit (lib) optionals optionalString;
 
   cursesDeps = [ gettext ncurses ]
-    ++ optionals stdenv.isDarwin [ CoreFoundation ];
+    ++ optionals stdenv.hostPlatform.isDarwin [ CoreFoundation ];
 
   tilesDeps = [ SDL2 SDL2_image SDL2_mixer SDL2_ttf freetype ]
-    ++ optionals stdenv.isDarwin [ Cocoa ];
+    ++ optionals stdenv.hostPlatform.isDarwin [ Cocoa ];
 
   patchDesktopFile = ''
     substituteInPlace $out/share/applications/org.cataclysmdda.CataclysmDDA.desktop \
@@ -44,20 +44,20 @@ stdenv.mkDerivation {
   '';
 
   makeFlags = [
-    "PREFIX=$(out)" "LANGUAGES=all" "RUNTESTS=0"
+    "PREFIX=$(out)" "LANGUAGES=all"
     (if useXdgDir then "USE_XDG_DIR=1" else "USE_HOME_DIR=1")
   ] ++ optionals (!debug) [
     "RELEASE=1"
   ] ++ optionals tiles [
     "TILES=1" "SOUND=1"
-  ] ++ optionals stdenv.isDarwin [
+  ] ++ optionals stdenv.hostPlatform.isDarwin [
     "NATIVE=osx"
     "CLANG=1"
-    "OSX_MIN=${stdenv.targetPlatform.darwinMinVersion}"
+    "OSX_MIN=${stdenv.hostPlatform.darwinMinVersion}"
   ];
 
   postInstall = optionalString tiles
-  ( if !stdenv.isDarwin
+  ( if !stdenv.hostPlatform.isDarwin
     then patchDesktopFile
     else installMacOSAppLauncher
   );
@@ -71,7 +71,8 @@ stdenv.mkDerivation {
   };
 
   meta = with lib; {
-    description = "A free, post apocalyptic, zombie infested rogue-like";
+    description = "Free, post apocalyptic, zombie infested rogue-like";
+    mainProgram = "cataclysm-tiles";
     longDescription = ''
       Cataclysm: Dark Days Ahead is a roguelike set in a post-apocalyptic world.
       Surviving is difficult: you have been thrown, ill-equipped, into a

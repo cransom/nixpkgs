@@ -8,7 +8,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "google";
     repo = "leveldb";
-    rev = "${version}";
+    rev = version;
     sha256 = "sha256-RL+dfSFZZzWvUobSqiPbuC4nDiGzjIIukbVJZRacHbI=";
   };
 
@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
 
   buildInputs = [ snappy ];
 
-  nativeBuildInputs = lib.optional stdenv.isDarwin fixDarwinDylibNames ++ [ cmake ];
+  nativeBuildInputs = lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames ++ [ cmake ];
 
   doCheck = true;
 

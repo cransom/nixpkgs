@@ -5,14 +5,14 @@
 
 python3Packages.buildPythonApplication rec {
   pname = "refurb";
-  version = "1.12.0";
+  version = "2.0.0";
   format = "pyproject";
 
   src = fetchFromGitHub {
     owner = "dosisod";
     repo = "refurb";
     rev = "refs/tags/v${version}";
-    hash = "sha256-dS9+S3RogsBlbEHyq5Ll3kGbULwIQHQkwwNjjbsrgio=";
+    hash = "sha256-6MchaqRKJPmvwiDyhCK4kFyIYl2B+2dGL8H8X2ES+VQ=";
   };
 
   nativeBuildInputs = with python3Packages; [
@@ -38,19 +38,21 @@ python3Packages.buildPythonApplication rec {
     pluggy
     py
     pyparsing
+    pytest-cov-stub
     pytestCheckHook
   ];
 
-  postPatch = ''
-    sed -i "/^addopts/d" pyproject.toml
-  '';
+  disabledTests = [
+    "test_checks" # broken because new mypy release added new checks
+  ];
 
   pythonImportsCheck = [
     "refurb"
   ];
 
   meta = with lib; {
-    description = "A tool for refurbishing and modernizing Python codebases";
+    description = "Tool for refurbishing and modernizing Python codebases";
+    mainProgram = "refurb";
     homepage = "https://github.com/dosisod/refurb";
     license = with licenses; [ gpl3Only ];
     maintainers = with maintainers; [ knl ];

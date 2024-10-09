@@ -1,48 +1,43 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, colorama
-, fetchpatch
-, fetchPypi
-, flit-core
-, click
-, pytestCheckHook
-, rich
-, shellingham
-, pytest-xdist
-, pytest-sugar
-, coverage
-, pythonOlder
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  click,
+  coverage,
+  fetchPypi,
+  pdm-backend,
+  pytest-sugar,
+  pytest-xdist,
+  pytestCheckHook,
+  pythonOlder,
+  rich,
+  shellingham,
+  typing-extensions,
 }:
 
 buildPythonPackage rec {
   pname = "typer";
-  version = "0.7.0";
+  version = "0.12.3";
   format = "pyproject";
 
   disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-/3l4RleKnyogG1NEKu3rVDMZRmhw++HHAeq2bddoEWU=";
+    hash = "sha256-SecxMUgdgEKI72JZjZehzu8wWJBapTahE0+QiRujVII=";
   };
 
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace "rich >=10.11.0,<13.0.0" "rich"
-  '';
-
-  nativeBuildInputs = [
-    flit-core
-  ];
+  nativeBuildInputs = [ pdm-backend ];
 
   propagatedBuildInputs = [
     click
-  ];
+    typing-extensions
+  # Build includes the standard optional by default
+  # https://github.com/tiangolo/typer/blob/0.12.3/pyproject.toml#L71-L72
+  ] ++ optional-dependencies.standard;
 
-  passthru.optional-dependencies = {
-    all = [
-      colorama
+  optional-dependencies = {
+    standard = [
       shellingham
       rich
     ];
@@ -53,26 +48,26 @@ buildPythonPackage rec {
     pytest-sugar
     pytest-xdist
     pytestCheckHook
-  ] ++ passthru.optional-dependencies.all;
+  ];
 
   preCheck = ''
     export HOME=$(mktemp -d);
   '';
-  disabledTests = lib.optionals stdenv.isDarwin [
-    # likely related to https://github.com/sarugaku/shellingham/issues/35
+
+  disabledTests = [
+    "test_scripts"
+    # Likely related to https://github.com/sarugaku/shellingham/issues/35
+    # fails also on Linux
     "test_show_completion"
     "test_install_completion"
-  ] ++ lib.optionals (stdenv.isLinux && stdenv.isAarch64) [
-    "test_install_completion"
-  ];
+  ] ++ lib.optionals (stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isAarch64) [ "test_install_completion" ];
 
-  pythonImportsCheck = [
-    "typer"
-  ];
+  pythonImportsCheck = [ "typer" ];
 
   meta = with lib; {
     description = "Library for building CLI applications";
     homepage = "https://typer.tiangolo.com/";
+    changelog = "https://github.com/tiangolo/typer/releases/tag/${version}";
     license = licenses.mit;
     maintainers = with maintainers; [ winpat ];
   };

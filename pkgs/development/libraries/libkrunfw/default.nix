@@ -5,55 +5,64 @@
 , flex
 , bison
 , bc
+, cpio
+, perl
 , elfutils
 , python3
 , sevVariant ? false
 }:
 
-assert sevVariant -> stdenv.isx86_64;
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "libkrunfw";
-  version = "3.9.0";
+  version = "4.4.1";
 
-  src = if stdenv.isLinux then fetchFromGitHub {
+  src = fetchFromGitHub {
     owner = "containers";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-hpVE7g6V3nquZ3R5fQCcfRWuFDHJ3rgisezwdsDMaGg=";
-  } else fetchurl {
-    url = "https://github.com/containers/libkrunfw/releases/download/v${version}/v${version}-with_macos_prebuilts.tar.gz";
-    hash = "sha256-moZ2LYLhZDb8Y8jgWbdgK6SbJ8lY8f356d5vKHc/54Q=";
+    repo = "libkrunfw";
+    rev = "refs/tags/v${finalAttrs.version}";
+    hash = "sha256-rxMklV/pu/muz/7m1clEs+BItXid/jMt6j/R/yHBKHI=";
   };
 
   kernelSrc = fetchurl {
-    url = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.1.6.tar.xz";
-    hash = "sha256-Pk2OVh2lcDogWujXsr7WxcZPxCme68v9IEgeY7V9XuM=";
+    url = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.52.tar.xz";
+    hash = "sha256-FZGrNIOZ1KpTEhFYUlBWppyM8P4OkJNbAJXppY43tLg=";
   };
 
-  preBuild = ''
+  postPatch = ''
     substituteInPlace Makefile \
-      --replace 'curl $(KERNEL_REMOTE) -o $(KERNEL_TARBALL)' 'ln -s $(kernelSrc) $(KERNEL_TARBALL)' \
-      --replace 'tar xf $(KERNEL_TARBALL)' \
-                'tar xf $(KERNEL_TARBALL); sed -i "s|/usr/bin/env bash|$(SHELL)|" $(KERNEL_SOURCES)/scripts/check-local-export' \
-      --replace 'gcc' '$(CC)'
+      --replace 'curl $(KERNEL_REMOTE) -o $(KERNEL_TARBALL)' 'ln -s $(kernelSrc) $(KERNEL_TARBALL)'
   '';
 
-  nativeBuildInputs = [ flex bison bc python3 python3.pkgs.pyelftools ];
-  buildInputs = lib.optionals stdenv.isLinux [ elfutils ];
+  nativeBuildInputs = [
+    flex
+    bison
+    bc
+    cpio
+    perl
+    python3
+    python3.pkgs.pyelftools
+  ];
+
+  buildInputs = [
+    elfutils
+  ];
 
   makeFlags = [
     "PREFIX=${placeholder "out"}"
-    "SONAME_Darwin=-Wl,-install_name,${placeholder "out"}/lib/libkrunfw.dylib"
-  ] ++ lib.optional sevVariant "SEV=1";
+  ] ++ lib.optionals sevVariant [
+    "SEV=1"
+  ];
+
+  # Fixes https://github.com/containers/libkrunfw/issues/55
+  NIX_CFLAGS_COMPILE = lib.optionalString stdenv.targetPlatform.isAarch64 "-march=armv8-a+crypto";
 
   enableParallelBuilding = true;
 
   meta = with lib; {
-    description = "A dynamic library bundling the guest payload consumed by libkrun";
+    description = "Dynamic library bundling the guest payload consumed by libkrun";
     homepage = "https://github.com/containers/libkrunfw";
     license = with licenses; [ lgpl2Only lgpl21Only ];
-    maintainers = with maintainers; [ nickcao ];
-    platforms = [ "x86_64-linux" "aarch64-darwin" ];
-    sourceProvenance = with sourceTypes; lib.optionals stdenv.isDarwin [ binaryNativeCode ];
+    maintainers = with maintainers; [ nickcao RossComputerGuy ];
+    platforms = [ "x86_64-linux" ] ++ lib.optionals (!sevVariant) [ "aarch64-linux" ];
   };
-}
+})

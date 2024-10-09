@@ -1,5 +1,5 @@
 { mkDerivation, lib, cmake, gettext, pkg-config, extra-cmake-modules
-, qtquickcontrols, qttools, kde-cli-tools, qtbase
+, qtquickcontrols, qttools, kde-cli-tools
 , kconfig, kdeclarative, kdoctools, kiconthemes, ki18n, kitemmodels, kitemviews
 , kjobwidgets, kcmutils, kio, knewstuff, knotifyconfig, kparts, ktexteditor
 , threadweaver, kxmlgui, kwindowsystem, grantlee, kcrash, karchive, kguiaddons
@@ -62,7 +62,7 @@ mkDerivation rec {
         A free, opensource IDE (Integrated Development Environment)
         for MS Windows, Mac OsX, Linux, Solaris and FreeBSD. It is a
         feature-full, plugin extendable IDE for C/C++ and other
-        programing languages. It is based on KDevPlatform, KDE and Qt
+        programming languages. It is based on KDevPlatform, KDE and Qt
         libraries and is under development since 1998.
       '';
     homepage = "https://www.kdevelop.org";

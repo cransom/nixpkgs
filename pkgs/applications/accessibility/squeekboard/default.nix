@@ -1,27 +1,29 @@
 { lib
 , stdenv
 , fetchFromGitLab
+, cargo
 , meson
 , ninja
 , pkg-config
-, gnome
 , gnome-desktop
 , glib
 , gtk3
 , wayland
 , wayland-protocols
+, wayland-scanner
+, libbsd
 , libxml2
 , libxkbcommon
 , rustPlatform
+, rustc
 , feedbackd
-, wrapGAppsHook
-, fetchpatch
+, wrapGAppsHook3
 , nixosTests
 }:
 
 stdenv.mkDerivation rec {
   pname = "squeekboard";
-  version = "1.20.0";
+  version = "1.41.0";
 
   src = fetchFromGitLab {
     domain = "gitlab.gnome.org";
@@ -29,41 +31,33 @@ stdenv.mkDerivation rec {
     owner = "Phosh";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-wx3fKRX/SPYGAFuR9u03JAvVRhtYIPUvW8mAsCdx83I=";
+    hash = "sha256-WHGdA0cEB1nu7vJ+pwjdl8aZzccJ232vsbSGmZohFVo=";
   };
 
   cargoDeps = rustPlatform.fetchCargoTarball {
     inherit src;
-    cargoUpdateHook = ''
-      cat Cargo.toml.in Cargo.deps.newer > Cargo.toml
-      cp Cargo.lock.newer Cargo.lock
-    '';
     name = "${pname}-${version}";
-    sha256 = "sha256-BbNkapqnqEW/NglrCse10Tm80SXYVQWWrOC5dTN6oi0=";
+    hash = "sha256-CRKaH8cA/EhXQna3zCU0Z06zkB9qu6QxPJ4No3NFcs0=";
   };
-
-  mesonFlags = [
-    "-Dnewer=true"
-  ];
 
   nativeBuildInputs = [
     meson
     ninja
     pkg-config
     glib
-    wayland
-    wrapGAppsHook
-  ] ++ (with rustPlatform; [
-    cargoSetupHook
-    rust.cargo
-    rust.rustc
-  ]);
+    wayland-scanner
+    wrapGAppsHook3
+    rustPlatform.cargoSetupHook
+    cargo
+    rustc
+  ];
 
   buildInputs = [
     gtk3
     gnome-desktop
     wayland
     wayland-protocols
+    libbsd
     libxml2
     libxkbcommon
     feedbackd
@@ -72,10 +66,10 @@ stdenv.mkDerivation rec {
   passthru.tests.phosh = nixosTests.phosh;
 
   meta = with lib; {
-    description = "A virtual keyboard supporting Wayland";
-    homepage = "https://source.puri.sm/Librem5/squeekboard";
+    description = "Virtual keyboard supporting Wayland";
+    homepage = "https://gitlab.gnome.org/World/Phosh/squeekboard";
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ artturin tomfitzhenry ];
+    maintainers = with maintainers; [ artturin ];
     platforms = platforms.linux;
   };
 }

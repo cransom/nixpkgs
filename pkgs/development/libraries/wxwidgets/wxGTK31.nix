@@ -1,8 +1,7 @@
 { lib
 , stdenv
 , fetchFromGitHub
-, fetchurl
-, gnome2
+, curl
 , gst_all_1
 , gtk3
 , libGL
@@ -16,9 +15,11 @@
 , compat28 ? false
 , compat30 ? true
 , unicode ? true
+, withCurl ? false
+, withPrivateFonts ? false
 , withEGL ? true
-, withMesa ? lib.elem stdenv.hostPlatform.system lib.platforms.mesaPlatforms
-, withWebKit ? stdenv.isDarwin
+, withMesa ? !stdenv.hostPlatform.isDarwin
+, withWebKit ? stdenv.hostPlatform.isDarwin
 , webkitgtk
 , setfile
 , AGL
@@ -33,13 +34,13 @@
 
 stdenv.mkDerivation rec {
   pname = "wxwidgets";
-  version = "3.1.5";
+  version = "3.1.7";
 
   src = fetchFromGitHub {
     owner = "wxWidgets";
     repo = "wxWidgets";
     rev = "v${version}";
-    hash = "sha256-2zMvcva0GUDmSYK0Wk3/2Y6R3F7MgdqGBrOhmWgVA6g=";
+    hash = "sha256-9qYPatpTT28H+fz77o7/Y3YVmiK0OCsiQT5QAYe93M0=";
     fetchSubmodules = true;
   };
 
@@ -53,7 +54,7 @@ stdenv.mkDerivation rec {
   buildInputs = [
     gst_all_1.gst-plugins-base
     gst_all_1.gstreamer
-  ] ++ lib.optionals (!stdenv.isDarwin) [
+  ] ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
     gtk3
     libSM
     libXinerama
@@ -61,10 +62,11 @@ stdenv.mkDerivation rec {
     libXxf86vm
     xorgproto
   ]
+  ++ lib.optional withCurl curl
   ++ lib.optional withMesa libGLU
-  ++ lib.optional (withWebKit && !stdenv.isDarwin) webkitgtk
-  ++ lib.optional (withWebKit && stdenv.isDarwin) WebKit
-  ++ lib.optionals stdenv.isDarwin [
+  ++ lib.optional (withWebKit && !stdenv.hostPlatform.isDarwin) webkitgtk
+  ++ lib.optional (withWebKit && stdenv.hostPlatform.isDarwin) WebKit
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     setfile
     Carbon
     Cocoa
@@ -75,7 +77,7 @@ stdenv.mkDerivation rec {
     WebKit
   ];
 
-  propagatedBuildInputs = lib.optional stdenv.isDarwin AGL;
+  propagatedBuildInputs = lib.optional stdenv.hostPlatform.isDarwin AGL;
 
   configureFlags = [
     "--disable-precomp-headers"
@@ -87,8 +89,10 @@ stdenv.mkDerivation rec {
   ]
   ++ lib.optional (!withEGL) "--disable-glcanvasegl"
   ++ lib.optional unicode "--enable-unicode"
+  ++ lib.optional withCurl "--enable-webrequest"
+  ++ lib.optional withPrivateFonts "--enable-privatefonts"
   ++ lib.optional withMesa "--with-opengl"
-  ++ lib.optionals stdenv.isDarwin [
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "--with-osx_cocoa"
     "--with-libiconv"
   ] ++ lib.optionals withWebKit [
@@ -96,7 +100,7 @@ stdenv.mkDerivation rec {
     "--enable-webviewwebkit"
   ];
 
-  SEARCH_LIB = "${libGLU.out}/lib ${libGL.out}/lib ";
+  SEARCH_LIB = lib.optionalString (!stdenv.hostPlatform.isDarwin) "${libGLU.out}/lib ${libGL.out}/lib ";
 
   preConfigure = ''
     substituteInPlace configure --replace \
@@ -105,7 +109,7 @@ stdenv.mkDerivation rec {
       'SEARCH_LIB=' 'DUMMY_SEARCH_LIB='
     substituteInPlace configure --replace \
       /usr /no-such-path
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     substituteInPlace configure --replace \
       'ac_cv_prog_SETFILE="/Developer/Tools/SetFile"' \
       'ac_cv_prog_SETFILE="${setfile}/bin/SetFile"'
@@ -127,7 +131,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://www.wxwidgets.org/";
-    description = "A Cross-Platform C++ GUI Library";
+    description = "Cross-Platform C++ GUI Library";
     longDescription = ''
       wxWidgets gives you a single, easy-to-use API for writing GUI applications
       on multiple platforms that still utilize the native platform's controls

@@ -2,20 +2,20 @@
 
 stdenv.mkDerivation rec {
   pname = "libad9361";
-  version = "0.2";
+  version = "0.3";
 
   src = fetchFromGitHub {
     owner = "analogdevicesinc";
     repo = "libad9361-iio";
     rev = "v${version}";
-    hash = "sha256-dYoFWRnREvlOC514ZpmmvoS37DmIkVqfq7JPpTXqXd8=";
+    hash = "sha256-9e66qSrKpczatZY9lPAzi/6f7lHChnl2+Pih53oa28Y=";
   };
 
   nativeBuildInputs = [ cmake ];
 
   buildInputs = [ libiio ];
 
-  postPatch = lib.optionalString stdenv.isDarwin ''
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
     # Fix iio include path on darwin to match linux
     for i in test/*.c; do
       substituteInPlace $i \

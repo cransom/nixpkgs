@@ -37,7 +37,7 @@ stdenv.mkDerivation rec {
     })
     # Replace removed sys_nerr and sys_errlist with strerror
     (fetchpatch {
-      url = "https://aur.archlinux.org/cgit/aur.git/plain/linux_strerror.patch?h=pdisk&id=&id=d0c930ea8bcac008bbd0ade1811133a625caea54";
+      url = "https://aur.archlinux.org/cgit/aur.git/plain/linux_strerror.patch?h=pdisk&id=d0c930ea8bcac008bbd0ade1811133a625caea54";
       sha256 = "sha256-HGJIS+vTn6456KtaETutIgTPPBm2C9OHf1anG8yaJPo=";
     })
   ];
@@ -61,7 +61,7 @@ stdenv.mkDerivation rec {
     IOKit
   ];
 
-  NIX_CFLAGS_COMPILE = "-D_GNU_SOURCE";
+  env.NIX_CFLAGS_COMPILE = "-D_GNU_SOURCE";
 
   enableParallelBuilding = true;
 
@@ -78,11 +78,11 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "A low-level Apple partition table editor for Linux, OSS Apple version";
+    description = "Low-level Apple partition table editor for Linux, OSS Apple version";
     homepage = "https://github.com/apple-oss-distributions/pdisk";
     license = with licenses; [
       hpnd # original license statements seems to match this (in files that are shared with mac-fdisk)
-      apsl10 # new files
+      apple-psl10 # new files
     ];
     maintainers = with maintainers; [ OPNA2608 ];
     platforms = platforms.unix;

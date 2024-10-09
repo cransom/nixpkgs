@@ -14,7 +14,9 @@ stdenv.mkDerivation rec {
     sha256 = "0s0b14hjwvbxksq7af5v8z9g2rfqv9jdmxd9d81m57f5mh6rad0p";
   };
 
-  nativeBuildInputs = [ makeWrapper pkg-config ];
+  strictDeps = true;
+  nativeBuildInputs = [ makeWrapper pkg-config ]
+    ++ lib.optionals cupsSupport [ cups perl ]; # for cups-config
   buildInputs =
     [ ijs zlib ]
     ++ lib.optionals gimp2Support [ gimp.gtk gimp ]
@@ -46,7 +48,7 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     description = "Ghostscript and cups printer drivers";
     homepage = "https://sourceforge.net/projects/gimp-print/";
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     platforms = platforms.linux;
     isGutenprint = true;
   };

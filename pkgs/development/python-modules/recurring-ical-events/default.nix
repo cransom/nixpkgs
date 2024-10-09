@@ -1,41 +1,56 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, icalendar
-, pytz
-, python-dateutil
-, x-wr-timezone
-, pytestCheckHook
-, restructuredtext_lint
-, pygments
-, tzdata
+{
+  lib,
+  buildPythonPackage,
+  pythonOlder,
+  fetchFromGitHub,
+  setuptools,
+  icalendar,
+  python-dateutil,
+  tzdata,
+  x-wr-timezone,
+  pytestCheckHook,
+  pytz,
+  restructuredtext-lint,
+  pygments,
 }:
 
 buildPythonPackage rec {
   pname = "recurring-ical-events";
-  version = "2.0.1";
+  version = "3.3.0";
 
-  format = "setuptools";
+  disabled = pythonOlder "3.8";
+
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "niccokunzmann";
     repo = "python-recurring-ical-events";
     rev = "v${version}";
-    hash = "sha256-1tmUf0HIKufiocAZPxkTLyicMU0o8dhSjCij2Lc/lyk=";
+    hash = "sha256-1Ggxi61epge6Rxc/vJ7OuuNjjeaQYReEPeOZV8DLghk=";
   };
 
-  propagatedBuildInputs = [
+  build-system = [ setuptools ];
+
+  pythonRelaxDeps = [ "icalendar" ];
+
+  dependencies = [
     icalendar
-    pytz
     python-dateutil
+    tzdata
     x-wr-timezone
   ];
 
   nativeCheckInputs = [
     pytestCheckHook
-    restructuredtext_lint
+    pytz
+    restructuredtext-lint
     pygments
-    tzdata
+  ];
+
+  disabledTests = lib.optionals (lib.versionOlder icalendar.version "6") [
+    # ModuleNotFoundError: No module named 'icalendar.timezone'
+    "test_can_import_zoneinfo"
+    "test_documentation_file"
   ];
 
   pythonImportsCheck = [ "recurring_ical_events" ];

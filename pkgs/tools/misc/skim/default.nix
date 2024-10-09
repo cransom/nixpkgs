@@ -7,18 +7,18 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "skim";
-  version = "0.10.2";
+  version = "0.10.4";
 
   src = fetchCrate {
     inherit pname version;
-    sha256 = "sha256-LkPkwYsaSLfaZktHF23Fgaks+fDlbB1S6SRgXtJRBqQ=";
+    hash = "sha256-C2yK+SO8Tpw3BxXXu1jeDzYJ2548RZa7NFWaE0SdNJ0=";
   };
 
   nativeBuildInputs = [ installShellFiles ];
 
   outputs = [ "out" "vim" ];
 
-  cargoSha256 = "sha256-lG26dgvjqCZ/4KgzurMrlhl+JKec+xLt/5uA6XcsSPk=";
+  cargoHash = "sha256-jBcgoWbmBOgU7M71lr4OXOe2S6NAXl+I8D+ZtT45Vos=";
 
   postPatch = ''
     sed -i -e "s|expand('<sfile>:h:h')|'$out'|" plugin/skim.vim
@@ -43,7 +43,7 @@ rustPlatform.buildRustPackage rec {
   '';
 
   # https://github.com/lotabout/skim/issues/440
-  doCheck = !stdenv.isAarch64;
+  doCheck = !stdenv.hostPlatform.isAarch64;
 
   meta = with lib; {
     description = "Command-line fuzzy finder written in Rust";

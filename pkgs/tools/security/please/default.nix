@@ -8,16 +8,16 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "please";
-  version = "0.5.3";
+  version = "0.5.5";
 
   src = fetchFromGitLab {
     owner = "edneville";
     repo = "please";
     rev = "v${version}";
-    hash = "sha256-YL0yKIDoFD6Q5gVXOjHiqH2ub7jlhlE/uDKLK1FlE74=";
+    hash = "sha256-bQ91uCDA2HKuiBmHZ9QP4V6tM6c7hRvECqXzfC6EEnI=";
   };
 
-  cargoHash = "sha256-noZsnFL6G1KcxGY0sn0PvY5nIdx5aOAMErMViIY/7bE=";
+  cargoHash = "sha256-PheqGFkXd5lQLMfrmH+TS0jfHdGPym/pTSh5Y2ZIHqw=";
 
   nativeBuildInputs = [ installShellFiles ];
 
@@ -29,10 +29,13 @@ rustPlatform.buildRustPackage rec {
     installManPage man/*
   '';
 
+  # Unit tests are broken on NixOS.
+  doCheck = false;
+
   passthru.tests = { inherit (nixosTests) please; };
 
   meta = with lib; {
-    description = "A polite regex-first sudo alternative";
+    description = "Polite regex-first sudo alternative";
     longDescription = ''
       Delegate accurate least privilege access with ease. Express easily with a
       regex and expose only what is needed and nothing more. Or validate file

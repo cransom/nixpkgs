@@ -2,13 +2,13 @@
 
 stdenv.mkDerivation rec {
   pname = "aws-c-event-stream";
-  version = "0.2.18";
+  version = "0.4.3";
 
   src = fetchFromGitHub {
     owner = "awslabs";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-zsPhZHguOky55fz2m5xu4H42/pWATGJEHyoK0fZLybc=";
+    hash = "sha256-xLgPFy+wFtUe3GawICrAHyji+mkfxC2jw7lsL+p7pl4=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -29,6 +29,6 @@ stdenv.mkDerivation rec {
     homepage = "https://github.com/awslabs/aws-c-event-stream";
     license = licenses.asl20;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ orivej eelco ];
+    maintainers = with maintainers; [ orivej ];
   };
 }

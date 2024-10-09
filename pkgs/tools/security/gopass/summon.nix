@@ -7,16 +7,16 @@
 
 buildGoModule rec {
   pname = "gopass-summon-provider";
-  version = "1.15.4";
+  version = "1.15.14";
 
   src = fetchFromGitHub {
     owner = "gopasspw";
     repo = "gopass-summon-provider";
     rev = "v${version}";
-    hash = "sha256-gwvrwLJTh58PiRsEC3juhnA/q6cX3nRh/hiunKnPvDQ=";
+    hash = "sha256-L/wX3qUrx6YfA6flCJ32WyEiBV0dSwAGdWQCU++/Iz8=";
   };
 
-  vendorHash = "sha256-MLnfTdYR4/1qtnNCUs0TwGf5wMqE+V8jNCefeClQKfw=";
+  vendorHash = "sha256-ZNHAjFzMMxodxb/AGVq8q+sP36qR5+8eaKdmmjIaMjs=";
 
   subPackages = [ "." ];
 
@@ -33,8 +33,10 @@ buildGoModule rec {
 
   meta = with lib; {
     description = "Gopass Summon Provider";
-    homepage = "https://www.gopass.pw/";
+    homepage = "https://github.com/gopasspw/gopass-summon-provider";
+    changelog = "https://github.com/gopasspw/gopass-summon-provider/blob/v${version}/CHANGELOG.md";
     license = licenses.mit;
     maintainers = with maintainers; [ sikmir ];
+    mainProgram = "gopass-summon-provider";
   };
 }

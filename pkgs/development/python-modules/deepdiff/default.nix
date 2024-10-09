@@ -1,21 +1,24 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, click
-, ordered-set
-, orjson
-, clevercsv
-, jsonpickle
-, numpy
-, pytestCheckHook
-, pyyaml
-, toml
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitHub,
+  click,
+  ordered-set,
+  orjson,
+  clevercsv,
+  jsonpickle,
+  numpy,
+  pytestCheckHook,
+  python-dateutil,
+  pyyaml,
+  toml,
+  tomli-w,
+  pythonOlder,
 }:
 
 buildPythonPackage rec {
   pname = "deepdiff";
-  version = "6.2.3";
+  version = "7.0.1";
   format = "setuptools";
 
   disabled = pythonOlder "3.7";
@@ -24,7 +27,7 @@ buildPythonPackage rec {
     owner = "seperman";
     repo = "deepdiff";
     rev = "refs/tags/${version}";
-    hash = "sha256-rlMksUi+R48fIEjVv2E3yOETDezTghZ8+Zsypu8fAnQ=";
+    hash = "sha256-HqmAE5sLwyjyUahIUeRIJW0c5eliq/qEzE2FydHwc70=";
   };
 
   postPatch = ''
@@ -33,11 +36,12 @@ buildPythonPackage rec {
   '';
 
   propagatedBuildInputs = [
+    click
     ordered-set
     orjson
   ];
 
-  passthru.optional-dependencies = {
+  optional-dependencies = {
     cli = [
       clevercsv
       click
@@ -50,14 +54,21 @@ buildPythonPackage rec {
     jsonpickle
     numpy
     pytestCheckHook
-  ] ++ passthru.optional-dependencies.cli;
+    python-dateutil
+    tomli-w
+  ] ++ optional-dependencies.cli;
 
-  pythonImportsCheck = [
-    "deepdiff"
+  disabledTests = [
+    # not compatible with pydantic 2.x
+    "test_pydantic1"
+    "test_pydantic2"
   ];
+
+  pythonImportsCheck = [ "deepdiff" ];
 
   meta = with lib; {
     description = "Deep Difference and Search of any Python object/data";
+    mainProgram = "deep";
     homepage = "https://github.com/seperman/deepdiff";
     changelog = "https://github.com/seperman/deepdiff/releases/tag/${version}";
     license = licenses.mit;

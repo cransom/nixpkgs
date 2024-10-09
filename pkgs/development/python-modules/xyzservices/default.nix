@@ -1,25 +1,35 @@
-{ lib
-, buildPythonPackage
-, fetchFromGitHub
-, fetchPypi
-, mercantile
-, pytestCheckHook
-, requests
+{
+  lib,
+  buildPythonPackage,
+  fetchPypi,
+  mercantile,
+  pytestCheckHook,
+  requests,
+  setuptools,
+  setuptools-scm,
 }:
 
 buildPythonPackage rec {
   pname = "xyzservices";
-  version = "2022.9.0";
-  format = "setuptools";
+  version = "2024.9.0";
+  pyproject = true;
 
   src = fetchPypi {
     inherit pname version;
-    hash = "sha256-VWUZYXCLmhSEmXizOd92AIyIbfeoMmMIpVSbrlUWJgw=";
+    hash = "sha256-aPuDU8nbuk8f9sDy5eTllrueHbf5T099+8sm4lqmb94=";
   };
 
-  pythonImportsCheck = [
-    "xyzservices.providers"
+  nativeBuildInputs = [
+    setuptools
+    setuptools-scm
   ];
+
+  pytestFlagsArray = [
+    # requires network connections
+    "-m 'not request'"
+  ];
+
+  pythonImportsCheck = [ "xyzservices.providers" ];
 
   nativeCheckInputs = [
     mercantile
@@ -27,11 +37,11 @@ buildPythonPackage rec {
     requests
   ];
 
-  meta = with lib; {
+  meta = {
     changelog = "https://github.com/geopandas/xyzservices/releases/tag/${version}";
     description = "Source of XYZ tiles providers";
     homepage = "https://github.com/geopandas/xyzservices";
-    license = licenses.bsd3;
-    maintainers = with maintainers; [ ];
+    license = lib.licenses.bsd3;
+    maintainers = lib.teams.geospatial.members;
   };
 }

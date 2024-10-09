@@ -89,7 +89,7 @@ let
   renderSection = sectionName: attrs:
     lib.pipe attrs [
       (lib.mapAttrsToList renderLine)
-      (builtins.filter (v: !isNull v))
+      (builtins.filter (v: v != null))
       (builtins.concatStringsSep "\n")
       (section: ''
         [${sectionName}]
@@ -108,11 +108,12 @@ let
   renderAction = name: attrs: renderSection "Desktop Action ${name}" (preprocessAction attrs);
   actionsRendered = lib.mapAttrsToList renderAction actions;
 
+  extension = if type == "Directory" then "directory" else "desktop";
   content = [ mainSectionRendered ] ++ actionsRendered;
 in
 writeTextFile {
-  name = "${name}.desktop";
-  destination = "/share/applications/${name}.desktop";
+  name = "${name}.${extension}";
+  destination = "/share/applications/${name}.${extension}";
   text = builtins.concatStringsSep "\n" content;
   checkPhase = ''${buildPackages.desktop-file-utils}/bin/desktop-file-validate "$target"'';
 })

@@ -3,7 +3,6 @@
   stdenv,
   fetchFromGitHub,
   installShellFiles,
-  writeText,
   cmake,
   libxslt,
   docbook_xsl_ns,
@@ -17,18 +16,18 @@
 }:
 
 let
-  inherit (stdenv) isLinux;
+  inherit (stdenv.hostPlatform) isLinux;
 in
 
 stdenv.mkDerivation rec {
   pname = "qdmr";
-  version = "0.11.2";
+  version = "0.12.0";
 
   src = fetchFromGitHub {
     owner = "hmatuschek";
     repo = "qdmr";
     rev = "v${version}";
-    sha256 = "sha256-zT31tzsm5OM99vz8DzGCdPmnemiwiJpKccYwECnUgOQ=";
+    hash = "sha256-8NV0+M9eMcvkP3UERDkaimbapTKxB4rYRLbHZjzG4Ws=";
   };
 
   nativeBuildInputs = [
@@ -52,7 +51,10 @@ stdenv.mkDerivation rec {
       --replace /usr/share/xml/docbook/stylesheet/docbook-xsl/manpages/docbook\.xsl ${docbook_xsl_ns}/xml/xsl/docbook/manpages/docbook.xsl
   '';
 
-  cmakeFlags = [ "-DBUILD_MAN=ON" ];
+  cmakeFlags = [
+    "-DBUILD_MAN=ON"
+    "-DINSTALL_UDEV_RULES=OFF"
+  ];
 
   postInstall = ''
     installManPage doc/dmrconf.1 doc/qdmr.1
@@ -64,7 +66,7 @@ stdenv.mkDerivation rec {
     description = "GUI application and command line tool for programming DMR radios";
     homepage = "https://dm3mat.darc.de/qdmr/";
     license = lib.licenses.gpl3Plus;
-    maintainers = with lib.maintainers; [ janik _0x4A6F ];
+    maintainers = with lib.maintainers; [ _0x4A6F ];
     platforms = lib.platforms.linux;
   };
 }

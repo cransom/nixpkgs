@@ -41,7 +41,7 @@ stdenv.mkDerivation rec {
 
   # Force optimization to fix:
   # warning: #warning _FORTIFY_SOURCE requires compiling with optimization (-O)
-  NIX_CFLAGS_COMPILE = "-O3";
+  env.NIX_CFLAGS_COMPILE = "-O3";
 
   # Remove pre-built y.tab.c to generate with nixpkgs bison
   preBuild = ''
@@ -63,7 +63,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "The Zest Framework used in ZynAddSubFX's UI";
+    description = "Zest Framework used in ZynAddSubFX's UI";
     homepage = "https://github.com/mruby-zest";
     license = licenses.lgpl21Plus;
     maintainers = with maintainers; [ kira-bruneau ];

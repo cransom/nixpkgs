@@ -31,7 +31,7 @@ stdenv.mkDerivation rec {
   hardeningDisable = [ "format" ];
 
   meta = with lib; {
-    homepage = "http://hunspell.sourceforge.net";
+    homepage = "https://hunspell.sourceforge.net";
     description = "Spell checker";
     longDescription = ''
       Hunspell is the spell checker of LibreOffice, OpenOffice.org, Mozilla
@@ -55,6 +55,6 @@ stdenv.mkDerivation rec {
     '';
     platforms = platforms.all;
     license = with licenses; [ gpl2 lgpl21 mpl11 ];
-    maintainers = with lib.maintainers; [ ];
+    maintainers = [ ];
   };
 }

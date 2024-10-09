@@ -3,18 +3,17 @@
 , fetchFromGitHub
 , makeWrapper
 , babashka
-, jdk
 }:
 
 stdenv.mkDerivation rec {
   pname = "neil";
-  version = "0.1.47";
+  version = "0.3.66";
 
   src = fetchFromGitHub {
     owner = "babashka";
     repo = "neil";
     rev = "v${version}";
-    sha256 = "sha256-fsFIBT1voh6QcGRoGYx10JoKqZuV3xcA+eOo03DYz1s=";
+    sha256 = "sha256-Gh4bhJh5ZB2ZEp3cx1D/r1qyc5SLdQ7RGGR12UaFW/k=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
@@ -24,12 +23,13 @@ stdenv.mkDerivation rec {
   installPhase = ''
     install -D neil $out/bin/neil
     wrapProgram $out/bin/neil \
-      --prefix PATH : "${lib.makeBinPath [ babashka jdk ]}"
+      --prefix PATH : "${lib.makeBinPath [ babashka ]}"
   '';
 
   meta = with lib; {
     homepage = "https://github.com/babashka/neil";
-    description = "A CLI to add common aliases and features to deps.edn-based projects";
+    description = "CLI to add common aliases and features to deps.edn-based projects";
+    mainProgram = "neil";
     license = licenses.mit;
     platforms = babashka.meta.platforms;
     maintainers = with maintainers; [ jlesquembre ];

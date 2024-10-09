@@ -1,12 +1,12 @@
 { lib, fetchFromGitHub, stdenvNoCC }:
 
-stdenvNoCC.mkDerivation (self: {
+stdenvNoCC.mkDerivation {
   pname = "league-script-number-one";
   version = "2011-05-25";
 
   src = fetchFromGitHub {
     owner = "theleagueof";
-    repo = self.pname;
+    repo = "league-script-number-one";
     rev = "225add0b37cf8268759ba4572e02630d9fb54ecf";
     hash = "sha256-Z3Zrp0Os3On0tESVical1Qh6wY1H2Hc0OPTlkbtsrCI=";
   };
@@ -20,7 +20,7 @@ stdenvNoCC.mkDerivation (self: {
   '';
 
   meta = {
-    description = "A modern, coquettish script font";
+    description = "Modern, coquettish script font";
     longDescription = ''
       This ain’t no Lucinda. League Script #1 is a modern, coquettish script
       font that sits somewhere between your high school girlfriend’s love notes
@@ -32,4 +32,4 @@ stdenvNoCC.mkDerivation (self: {
     license = lib.licenses.ofl;
     maintainers = with lib.maintainers; [ minijackson ];
   };
-})
+}

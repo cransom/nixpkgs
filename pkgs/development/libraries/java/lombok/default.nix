@@ -2,11 +2,11 @@
 
 stdenv.mkDerivation rec {
   pname = "lombok";
-  version = "1.18.24";
+  version = "1.18.34";
 
   src = fetchurl {
     url = "https://projectlombok.org/downloads/lombok-${version}.jar";
-    sha256 = "sha256-01hLwtsD8Fn5hPsKnBGarB+g2leKRI5p/D9os2WEx0k=";
+    sha256 = "sha256-wn1rKv9WJB0bB/y8xrGDcJ5rQyyA9zdO6x2CPobUuBo=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
@@ -23,7 +23,8 @@ stdenv.mkDerivation rec {
   '';
 
   meta = {
-    description = "A library that can write a lot of boilerplate for your Java project";
+    description = "Library that can write a lot of boilerplate for your Java project";
+    mainProgram = "lombok";
     platforms = lib.platforms.all;
     sourceProvenance = with lib.sourceTypes; [ binaryBytecode ];
     license = lib.licenses.mit;

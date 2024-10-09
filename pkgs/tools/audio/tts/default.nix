@@ -1,50 +1,35 @@
 { lib
 , python3
 , fetchFromGitHub
-, fetchpatch
 , espeak-ng
+, tts
 }:
-
-# USAGE:
-# $ tts-server --list_models
-# # pick your favorite vocoder/tts model
-# $ tts-server --model_name tts_models/en/ljspeech/glow-tts --vocoder_name vocoder_models/universal/libri-tts/fullband-melgan
-#
-# If you upgrade from an old version you may have to delete old models from ~/.local/share/tts
-#
-# For now, for deployment check the systemd unit in the pull request:
-#   https://github.com/NixOS/nixpkgs/pull/103851#issue-521121136
 
 let
   python = python3.override {
+    self = python;
     packageOverrides = self: super: {
-      # API breakage with 0.9.0
-      # TypeError: mel() takes 0 positional arguments but 2 positional arguments (and 3 keyword-only arguments) were given
-      librosa = super.librosa.overridePythonAttrs (oldAttrs: rec {
-        version = "0.8.1";
-        src = super.fetchPypi {
-          pname = "librosa";
-          inherit version;
-          hash = "sha256-xT0F52iuSj5VOuIcLlAVKT5e+/1cEtSX8RBMtRnMprM=";
-        };
-      });
+      torch = super.torch-bin;
+      torchvision = super.torchvision-bin;
+      tensorflow = super.tensorflow-bin;
     };
   };
 in
 python.pkgs.buildPythonApplication rec {
   pname = "tts";
-  version = "0.11.1";
-  format = "pyproject";
+  version = "0.20.2";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "coqui-ai";
     repo = "TTS";
     rev = "refs/tags/v${version}";
-    hash = "sha256-EVFFETiGbrouUsrIhMFZEex3UGCCWTI3CC4yFAcERyw=";
+    hash = "sha256-1nlSf15IEX1qKfDtR6+jQqskjxIuzaIWatkj9Z1fh8Y=";
   };
 
   postPatch = let
     relaxedConstraints = [
+      "bnunicodenormalizer"
       "cython"
       "gruut"
       "inflect"
@@ -53,25 +38,39 @@ python.pkgs.buildPythonApplication rec {
       "numba"
       "numpy"
       "unidic-lite"
+      "trainer"
     ];
   in ''
     sed -r -i \
       ${lib.concatStringsSep "\n" (map (package:
-        ''-e 's/${package}.*[<>=]+.*/${package}/g' \''
+        ''-e 's/${package}\s*[<>=]+.+/${package}/g' \''
       ) relaxedConstraints)}
     requirements.txt
+
+    sed -r -i \
+      ${lib.concatStringsSep "\n" (map (package:
+        ''-e 's/${package}\s*[<>=]+[^"]+/${package}/g' \''
+      ) relaxedConstraints)}
+    pyproject.toml
     # only used for notebooks and visualization
     sed -r -i -e '/umap-learn/d' requirements.txt
   '';
 
   nativeBuildInputs = with python.pkgs; [
     cython
+    numpy
     packaging
+    setuptools
   ];
 
   propagatedBuildInputs = with python.pkgs; [
     anyascii
+    bangla
+    bnnumerizer
+    bnunicodenormalizer
     coqpit
+    einops
+    encodec
     flask
     fsspec
     g2pkk
@@ -80,6 +79,7 @@ python.pkgs.buildPythonApplication rec {
     inflect
     jamo
     jieba
+    k-diffusion
     librosa
     matplotlib
     mecab-python3
@@ -96,6 +96,7 @@ python.pkgs.buildPythonApplication rec {
     torchaudio-bin
     tqdm
     trainer
+    transformers
     unidic-lite
     webrtcvad
   ];
@@ -105,9 +106,13 @@ python.pkgs.buildPythonApplication rec {
     # cython modules are not installed for some reasons
     (
       cd TTS/tts/utils/monotonic_align
-      ${python.interpreter} setup.py install --prefix=$out
+      ${python.pythonOnBuildForHost.interpreter} setup.py install --prefix=$out
     )
   '';
+
+  # tests get stuck when run in nixpkgs-review, tested in passthru
+  doCheck = false;
+  passthru.tests.pytest = tts.overridePythonAttrs (_: { doCheck = true; });
 
   nativeCheckInputs = with python.pkgs; [
     espeak-ng
@@ -124,7 +129,7 @@ python.pkgs.buildPythonApplication rec {
 
     for file in $(grep -rl 'python TTS/bin' tests); do
       substituteInPlace "$file" \
-        --replace "python TTS/bin" "${python.interpreter} $out/lib/${python.libPrefix}/site-packages/TTS/bin"
+        --replace "python TTS/bin" "${python.interpreter} $out/${python.sitePackages}/TTS/bin"
     done
   '';
 
@@ -178,7 +183,13 @@ python.pkgs.buildPythonApplication rec {
     "tests/vocoder_tests/test_multiband_melgan_train.py"
     "tests/vocoder_tests/test_melgan_train.py"
     "tests/vocoder_tests/test_wavernn_train.py"
+    # only a feed forward test, but still takes too long
+    "tests/tts_tests/test_overflow.py"
   ];
+
+  passthru = {
+    inherit python;
+  };
 
   meta = with lib; {
     homepage = "https://github.com/coqui-ai/TTS";
@@ -186,5 +197,6 @@ python.pkgs.buildPythonApplication rec {
     description = "Deep learning toolkit for Text-to-Speech, battle-tested in research and production";
     license = licenses.mpl20;
     maintainers = teams.tts.members;
+    broken = true; # added 2024-04-08
   };
 }

@@ -5,13 +5,13 @@
 
 stdenv.mkDerivation rec {
   pname = "fnotifystat";
-  version = "0.02.09";
+  version = "0.03.00";
 
   src = fetchFromGitHub {
     owner = "ColinIanKing";
     repo = pname;
     rev = "V${version}";
-    hash = "sha256-YyIk7x0B3JB/iMF9OP767fVEBgcV0duV7xIiHZxpL0w=";
+    hash = "sha256-UGww0/m+JMftQyAguc8UpPrtIphjCq9TINabFaAKN0A=";
   };
 
   installFlags = [
@@ -22,9 +22,10 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "File activity monitoring tool";
+    mainProgram = "fnotifystat";
     homepage = "https://github.com/ColinIanKing/fnotifystat";
     license = licenses.gpl2Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ womfoo dtzWill ];
+    maintainers = with maintainers; [ womfoo ];
   };
 }

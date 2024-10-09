@@ -8,7 +8,6 @@
 , libXft
 , libXinerama
 , conf ? null
-, nix-update-script
 }:
 
 stdenv.mkDerivation rec {
@@ -18,8 +17,8 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "phillbush";
     repo = "xnotify";
-    rev = "58c7d5763c3fb1c32a76560c85d20a25f59d4687";
-    sha256 = "sha256-BSZesuBGAWYp3IMiiZi6CAyZEiz3sBJLQe6/JnxviLs=";
+    rev = "v${version}";
+    hash = "sha256-RfnmiAEFTPqQZursyVPDIZ6J3KBouvaaxyhTc1liqBc=";
   };
 
   buildInputs = [
@@ -30,20 +29,18 @@ stdenv.mkDerivation rec {
     libXinerama
   ];
 
-  postPatch = with lib;
+  postPatch =
     let
       configFile =
-        if isDerivation conf || builtins.isPath conf
+        if lib.isDerivation conf || builtins.isPath conf
         then conf else writeText "config.h" conf;
     in
-    optionalString (conf != null) "cp ${configFile} config.h";
+    lib.optionalString (conf != null) "cp ${configFile} config.h";
 
   makeFlags = [ "PREFIX=$(out)" ];
 
-  passthru.updateScript = nix-update-script { };
-
   meta = with lib; {
-    description = "A tool to read notifications from stdin and pop them up on the screen";
+    description = "Tool to read notifications from stdin and pop them up on the screen";
     longDescription = ''
       XNotify displays a notification on the screen. XNotify receives a
       notification specification in stdin and shows a notification for the user
@@ -53,5 +50,6 @@ stdenv.mkDerivation rec {
     license = licenses.mit;
     maintainers = with maintainers; [ azahi ];
     platforms = platforms.unix;
+    mainProgram = "xnotify";
   };
 }

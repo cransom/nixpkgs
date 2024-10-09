@@ -1,35 +1,40 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, requests
-, pythonOlder
+{
+  lib,
+  buildPythonPackage,
+  fetchFromGitLab,
+  setuptools,
+  aiohttp,
+  aioresponses,
+  pytest-asyncio,
+  pytestCheckHook,
 }:
 
 buildPythonPackage rec {
   pname = "doorbirdpy";
-  version = "2.2.1";
-  format = "setuptools";
+  version = "3.0.3";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  src = fetchPypi {
-    pname = "DoorBirdPy";
-    inherit version;
-    hash = "sha256-o6d8xXF5OuiF0B/wwYhDAZr05D84MuxHBY96G2XHILU=";
+  src = fetchFromGitLab {
+    owner = "klikini";
+    repo = "doorbirdpy";
+    rev = "refs/tags/${version}";
+    hash = "sha256-0UvzMFYKM/Sb9B2XwZwl+a9v7lTxAc1H59vR88VwDww=";
   };
 
-  propagatedBuildInputs = [
-    requests
+  build-system = [ setuptools ];
+
+  dependencies = [ aiohttp ];
+
+  nativeCheckInputs = [
+    aioresponses
+    pytest-asyncio
+    pytestCheckHook
   ];
 
-  # no tests on PyPI, no tags on GitLab
-  doCheck = false;
-
-  pythonImportsCheck = [
-    "doorbirdpy"
-  ];
+  pythonImportsCheck = [ "doorbirdpy" ];
 
   meta = with lib; {
+    changelog = "https://gitlab.com/klikini/doorbirdpy/-/tags/${version}";
     description = "Python wrapper for the DoorBird LAN API";
     homepage = "https://gitlab.com/klikini/doorbirdpy";
     license = licenses.mit;

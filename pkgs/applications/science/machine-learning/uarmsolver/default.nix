@@ -6,13 +6,13 @@
 
 stdenv.mkDerivation rec {
   pname = "uarmsolver";
-  version = "0.2.4";
+  version = "0.3.0";
 
   src = fetchFromGitHub {
    owner = "firefly-cpp";
    repo = "uARMSolver";
    rev = version;
-   sha256 = "17px69z0kw0z6cip41c45i6srbw56b0md92i9vbqyzinx8b75mzw";
+   sha256 = "sha256-IMlh6Y5iVouMZatR1uxw0gUNZBdh2qm56s+GEjcr1+M=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -23,6 +23,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     description = "universal Association Rule Mining Solver";
+    mainProgram = "uARMSolver";
     homepage    = "https://github.com/firefly-cpp/uARMSolver";
     license     = licenses.mit;
     platforms   = platforms.linux;

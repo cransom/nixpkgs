@@ -30,7 +30,7 @@ stdenv.mkDerivation rec {
   ];
 
   # Hidden dependency that wasn't included in CMakeLists.txt:
-  NIX_CFLAGS_COMPILE = "-I${kitemmodels.dev}/include/KF5";
+  env.NIX_CFLAGS_COMPILE = "-I${kitemmodels.dev}/include/KF5";
 
   nativeBuildInputs = [
     doxygen extra-cmake-modules graphviz kdoctools
@@ -76,6 +76,7 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "Personal finance manager for KDE";
+    mainProgram = "kmymoney";
     homepage = "https://kmymoney.org/";
     platforms = lib.platforms.linux;
     license = lib.licenses.gpl2Plus;

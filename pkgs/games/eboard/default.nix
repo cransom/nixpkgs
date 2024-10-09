@@ -16,11 +16,7 @@ stdenv.mkDerivation rec {
 
   hardeningDisable = [ "format" ];
 
-  preConfigure = ''
-    patchShebangs ./configure
-  '';
-
-  NIX_CFLAGS_COMPILE = "-fpermissive";
+  env.NIX_CFLAGS_COMPILE = "-fpermissive";
 
   meta = {
     homepage = "http://www.bergo.eng.br/eboard/";

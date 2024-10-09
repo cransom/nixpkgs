@@ -1,49 +1,66 @@
-{ stdenv
-, lib
-, fetchFromGitHub
+{ lib
 , rustPlatform
+, fetchFromGitHub
 , installShellFiles
-, DiskArbitration
-, Foundation
-, libiconv
-, Security
+, pkg-config
+, oniguruma
+, stdenv
+, darwin
 , git
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "delta";
-  version = "0.15.1";
+  version = "0.18.2";
 
   src = fetchFromGitHub {
     owner = "dandavison";
-    repo = pname;
-    rev = version;
-    sha256 = "sha256-rPtLvO6raBY6BfrP0erBaXD86W1JL8g4XC4VbkR4Pww=";
+    repo = "delta";
+    rev = "refs/tags/${version}";
+    hash = "sha256-fJSKGa935kwLG8WYmT9Ncg2ozpSNMzUJx0WLo1gtVAA=";
   };
 
-  cargoSha256 = "sha256-raT8a8K05ZpiGuZdM1hNikGxqY6w0g8G1DohfybXD9s=";
+  cargoHash = "sha256-DIWzRVTADfAZdFckhh2lIfOD13h7GP3KIOQHf/oBHgc=";
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs = [
+    installShellFiles
+    pkg-config
+  ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [ DiskArbitration Foundation libiconv Security ];
+  buildInputs = [
+    oniguruma
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    darwin.apple_sdk_11_0.frameworks.Foundation
+  ];
 
   nativeCheckInputs = [ git ];
 
+  env = {
+    RUSTONIG_SYSTEM_LIBONIG = true;
+  };
+
   postInstall = ''
-    installShellCompletion --bash --name delta.bash etc/completion/completion.bash
-    installShellCompletion --zsh --name _delta etc/completion/completion.zsh
-    installShellCompletion --fish --name delta.fish etc/completion/completion.fish
+    installShellCompletion --cmd delta \
+      etc/completion/completion.{bash,fish,zsh}
   '';
 
-  checkFlags = lib.optionals stdenv.isDarwin [
-    "--skip=test_diff_same_non_empty_file"
+  # test_env_parsing_with_pager_set_to_bat sets environment variables,
+  # which can be flaky with multiple threads:
+  # https://github.com/dandavison/delta/issues/1660
+  dontUseCargoParallelTests = true;
+
+  checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
+    # This test tries to read /etc/passwd, which fails with the sandbox
+    # enabled on Darwin
+    "--skip=test_diff_real_files"
   ];
 
   meta = with lib; {
     homepage = "https://github.com/dandavison/delta";
-    description = "A syntax-highlighting pager for git";
+    description = "Syntax-highlighting pager for git";
     changelog = "https://github.com/dandavison/delta/releases/tag/${version}";
     license = licenses.mit;
-    maintainers = with maintainers; [ marsam zowoq SuperSandro2000 ];
+    maintainers = with maintainers; [ zowoq SuperSandro2000 figsoda ];
+    mainProgram = "delta";
   };
 }

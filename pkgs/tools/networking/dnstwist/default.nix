@@ -5,19 +5,23 @@
 
 python3.pkgs.buildPythonApplication rec {
   pname = "dnstwist";
-  version = "20221213";
-  format = "setuptools";
+  version = "20240812";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "elceef";
-    repo = pname;
+    repo = "dnstwist";
     rev = "refs/tags/${version}";
-    hash = "sha256-xYZGrlrEdot2l1SkXcT2IbeRWouaN6C+WwbBSHXhAtw=";
+    hash = "sha256-J6MfPKj7iACsiiSUU/2gxQdwtmqw9NKnjDoSdhxKoAw=";
   };
 
-  propagatedBuildInputs = with python3.pkgs; [
+  build-system = with python3.pkgs; [
+    setuptools
+  ];
+
+  dependencies = with python3.pkgs; [
     dnspython
-    GeoIP
+    geoip
     ppdeep
     requests
     tld
@@ -37,5 +41,6 @@ python3.pkgs.buildPythonApplication rec {
     changelog = "https://github.com/elceef/dnstwist/releases/tag/${version}";
     license = with licenses; [ gpl3Only ];
     maintainers = with maintainers; [ fab ];
+    mainProgram = "dnstwist";
   };
 }

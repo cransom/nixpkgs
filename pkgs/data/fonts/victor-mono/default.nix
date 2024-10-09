@@ -2,7 +2,7 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "victor-mono";
-  version = "1.5.4";
+  version = "1.5.6";
 
   # Upstream prefers we download from the website,
   # but we really insist on a more versioned resource.
@@ -14,7 +14,7 @@ stdenvNoCC.mkDerivation rec {
   src = fetchzip {
     url = "https://github.com/rubjo/victor-mono/raw/v${version}/public/VictorMonoAll.zip";
     stripRoot = false;
-    hash = "sha256-E8j1bfYrM8yRtasiwgTvyE4EYx2LyAbmw3MXH1l+owk=";
+    hash = "sha256-PnCCU7PO+XcxUk445sU5xVl8XqdSPJighjtDTqI6qiw=";
   };
 
   installPhase = ''
@@ -32,7 +32,7 @@ stdenvNoCC.mkDerivation rec {
     description = "Free programming font with cursive italics and ligatures";
     homepage = "https://rubjo.github.io/victor-mono";
     license = licenses.ofl;
-    maintainers = with maintainers; [ jpotier dtzWill ];
+    maintainers = with maintainers; [ jpotier ];
     platforms = platforms.all;
   };
 }

@@ -1,15 +1,15 @@
 { lib
 , stdenv
 , fetchurl
-, fetchpatch
 , pkg-config
 , glib
 , freetype
-, fontconfig
 , libintl
 , meson
 , ninja
 , gobject-introspection
+, buildPackages
+, withIntrospection ? lib.meta.availableOn stdenv.hostPlatform gobject-introspection && stdenv.hostPlatform.emulatorAvailable buildPackages
 , icu
 , graphite2
 , harfbuzz # The icu variant uses and propagates the non-icu one.
@@ -28,20 +28,21 @@
 , gtk4
 , mapnik
 , qt5
+, testers
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "harfbuzz${lib.optionalString withIcu "-icu"}";
-  version = "6.0.0";
+  version = "9.0.0";
 
   src = fetchurl {
-    url = "https://github.com/harfbuzz/harfbuzz/releases/download/${version}/harfbuzz-${version}.tar.xz";
-    sha256 = "HRAQoXUdB21SkeQzwThQKnlNZ5p0mNEmjuIeLUoUDrQ=";
+    url = "https://github.com/harfbuzz/harfbuzz/releases/download/${finalAttrs.version}/harfbuzz-${finalAttrs.version}.tar.xz";
+    hash = "sha256-pBsnLO65IMVyY+yFFgRULZ7IXuMDBQbZRmIGfHtquJ4=";
   };
 
   postPatch = ''
     patchShebangs src/*.py test
-  '' + lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.hostPlatform.isDarwin ''
     # ApplicationServices.framework headers have cast-align warnings.
     substituteInPlace src/hb.hh \
       --replace '#pragma GCC diagnostic error   "-Wcast-align"' ""
@@ -61,6 +62,8 @@ stdenv.mkDerivation rec {
     (lib.mesonEnable "coretext" withCoreText)
     (lib.mesonEnable "graphite" withGraphite2)
     (lib.mesonEnable "icu" withIcu)
+    (lib.mesonEnable "introspection" withIntrospection)
+    (lib.mesonOption "cmakepackagedir" "${placeholder "dev"}/lib/cmake")
   ];
 
   depsBuildBuild = [
@@ -70,14 +73,14 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     meson
     ninja
-    gobject-introspection
     libintl
     pkg-config
     python3
+    glib
     gtk-doc
     docbook-xsl-nons
     docbook_xml_dtd_43
-  ];
+  ] ++ lib.optional withIntrospection gobject-introspection;
 
   buildInputs = [ glib freetype ]
     ++ lib.optionals withCoreText [ ApplicationServices CoreText ];
@@ -91,7 +94,7 @@ stdenv.mkDerivation rec {
   postFixup = lib.optionalString withIcu ''
     rm "$out"/lib/libharfbuzz.* "$dev/lib/pkgconfig/harfbuzz.pc"
     ln -s {'${harfbuzz.dev}',"$dev"}/lib/pkgconfig/harfbuzz.pc
-    ${lib.optionalString stdenv.isDarwin ''
+    ${lib.optionalString stdenv.hostPlatform.isDarwin ''
       ln -s {'${harfbuzz.out}',"$out"}/lib/libharfbuzz.dylib
       ln -s {'${harfbuzz.out}',"$out"}/lib/libharfbuzz.0.dylib
     ''}
@@ -100,13 +103,22 @@ stdenv.mkDerivation rec {
   passthru.tests = {
     inherit gimp gtk3 gtk4 mapnik;
     inherit (qt5) qtbase;
+    pkg-config = testers.hasPkgConfigModules {
+      package = finalAttrs.finalPackage;
+    };
   };
 
   meta = with lib; {
-    description = "An OpenType text shaping engine";
+    description = "OpenType text shaping engine";
     homepage = "https://harfbuzz.github.io/";
-    maintainers = [ maintainers.eelco ];
+    changelog = "https://github.com/harfbuzz/harfbuzz/raw/${finalAttrs.version}/NEWS";
+    maintainers = [ ];
     license = licenses.mit;
-    platforms = with platforms; linux ++ darwin;
+    platforms = platforms.unix ++ platforms.windows;
+    pkgConfigModules = [
+      "harfbuzz"
+      "harfbuzz-gobject"
+      "harfbuzz-subset"
+    ];
   };
-}
+})

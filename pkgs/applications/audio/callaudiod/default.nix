@@ -11,14 +11,14 @@
 
 stdenv.mkDerivation rec {
   pname = "callaudiod";
-  version = "0.1.7";
+  version = "0.1.10";
 
   src = fetchFromGitLab {
     domain = "gitlab.com";
     owner = "mobian1";
     repo = pname;
     rev = version;
-    sha256 = "sha256-BDEu3ASlnovMK0lQC+CQvpXvtdt33BRntstPAWaAnsg=";
+    hash = "sha256-gc66XrrFyhF1TvrDECBfGQc+MiDtqZPxdCn0S/43XQU=";
   };
 
   strictDeps = true;
@@ -39,7 +39,7 @@ stdenv.mkDerivation rec {
     description = "Daemon for dealing with audio routing during phone calls";
     homepage = "https://gitlab.com/mobian1/callaudiod";
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ pacman99 tomfitzhenry ];
+    maintainers = with maintainers; [ pacman99 ];
     platforms = platforms.linux;
   };
 }

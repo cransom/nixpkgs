@@ -1,5 +1,4 @@
-{ lib
-, buildDunePackage
+{ buildDunePackage
 , ppx_sexp_conv
 , base
 , async
@@ -7,7 +6,7 @@
 , async_unix
 , cohttp
 , conduit-async
-, core_unix
+, core_unix ? null
 , uri
 , uri-sexp
 , logs

@@ -2,6 +2,7 @@
 , lib
 , fetchFromGitLab
 , meson
+, mesonEmulatorHook
 , ninja
 , pkg-config
 , gobject-introspection
@@ -26,6 +27,7 @@ stdenv.mkDerivation rec {
     sha256 = "NuxiVVowZ8ilP9rcgapCe9OzFCpoOfZxZiSyjTeOrts=";
   };
 
+  strictDeps = true;
   nativeBuildInputs = [
     meson
     ninja
@@ -34,6 +36,8 @@ stdenv.mkDerivation rec {
     vala
     gtk-doc
     docbook-xsl-nons
+  ] ++ lib.optionals (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) [
+    mesonEmulatorHook
   ];
 
   buildInputs = [
@@ -45,7 +49,7 @@ stdenv.mkDerivation rec {
     description = "Project for mocking web service APIs which use HTTP or HTTPS";
     homepage = "https://gitlab.freedesktop.org/pwithnall/uhttpmock/";
     license = licenses.lgpl21Plus;
-    maintainers = with maintainers; [ ];
+    maintainers = [ ];
     platforms = platforms.linux;
   };
 }

@@ -1,42 +1,46 @@
-{ lib
-, stdenv
-, buildPythonPackage
-, pythonOlder
-, fetchFromGitHub
-, cmake
-, cython_3
-, ninja
-, scikit-build
-, setuptools
-, numpy
-, hypothesis
-, pandas
-, pytestCheckHook
-, rapidfuzz-cpp
-, taskflow
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  pythonOlder,
+  fetchFromGitHub,
+  cmake,
+  cython,
+  ninja,
+  scikit-build-core,
+  setuptools,
+  numpy,
+  hypothesis,
+  pandas,
+  pytestCheckHook,
+  rapidfuzz-cpp,
+  taskflow,
 }:
 
 buildPythonPackage rec {
   pname = "rapidfuzz";
-  version = "2.13.7";
+  version = "3.10.0";
+  pyproject = true;
 
-  disabled = pythonOlder "3.7";
-
-  format = "pyproject";
+  disabled = pythonOlder "3.9";
 
   src = fetchFromGitHub {
     owner = "maxbachmann";
     repo = "RapidFuzz";
     rev = "refs/tags/v${version}";
-    hash = "sha256-ZovXYOoLriAmJHptolD135qCn7XHeVvzLJNzI08mqwY=";
+    hash = "sha256-hLYidU09nCSOi42zgSh7dW83glxIjFY4C6BTmy/sf60=";
   };
 
-  nativeBuildInputs = [
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "Cython >=3.0.11, <3.1.0" "Cython"
+  '';
+
+  build-system = [
     cmake
-    cython_3
+    cython
     ninja
-    scikit-build
-    setuptools
+    scikit-build-core
   ];
 
   dontUseCmakeConfigure = true;
@@ -46,19 +50,17 @@ buildPythonPackage rec {
     taskflow
   ];
 
-  preBuild = ''
-    export RAPIDFUZZ_BUILD_EXTENSION=1
-  '' + lib.optionalString (stdenv.isDarwin && stdenv.isx86_64) ''
-    export CMAKE_ARGS="-DCMAKE_CXX_COMPILER_AR=$AR -DCMAKE_CXX_COMPILER_RANLIB=$RANLIB"
-  '';
+  preBuild =
+    ''
+      export RAPIDFUZZ_BUILD_EXTENSION=1
+    ''
+    + lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) ''
+      export CMAKE_ARGS="-DCMAKE_CXX_COMPILER_AR=$AR -DCMAKE_CXX_COMPILER_RANLIB=$RANLIB"
+    '';
 
-  NIX_CFLAGS_COMPILE = lib.optionals (stdenv.cc.isClang && stdenv.isDarwin) [
-    "-fno-lto"  # work around https://github.com/NixOS/nixpkgs/issues/19098
-  ];
-
-  propagatedBuildInputs = [
-    numpy
-  ];
+  optional-dependencies = {
+    all = [ numpy ];
+  };
 
   preCheck = ''
     export RAPIDFUZZ_IMPLEMENTATION=cpp
@@ -70,9 +72,14 @@ buildPythonPackage rec {
     pytestCheckHook
   ];
 
+  disabledTests = lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) [
+    # segfaults
+    "test_cdist"
+  ];
+
   pythonImportsCheck = [
+    "rapidfuzz.distance"
     "rapidfuzz.fuzz"
-    "rapidfuzz.string_metric"
     "rapidfuzz.process"
     "rapidfuzz.utils"
   ];

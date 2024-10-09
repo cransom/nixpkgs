@@ -1,7 +1,7 @@
 { mkDerivation
-, lib
 , extra-cmake-modules
 , kdoctools
+, wayland-scanner
 , kcmutils
 , kcrash
 , kdeclarative
@@ -12,7 +12,6 @@
 , libXcursor
 , pam
 , plasma-framework
-, qtbase
 , qtdeclarative
 , qtx11extras
 , wayland
@@ -21,7 +20,7 @@
 
 mkDerivation {
   pname = "kscreenlocker";
-  nativeBuildInputs = [ extra-cmake-modules kdoctools ];
+  nativeBuildInputs = [ extra-cmake-modules kdoctools wayland-scanner ];
   buildInputs = [
     kcmutils
     kcrash

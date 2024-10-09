@@ -10,16 +10,16 @@
 
 buildGoModule rec {
   pname = "eget";
-  version = "1.3.2";
+  version = "1.3.4";
 
   src = fetchFromGitHub {
     owner = "zyedidia";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-tUHA5LbTOz20ydMM8141VjCUBsxI+Wzkgfh27aq/2y4=";
+    sha256 = "sha256-jhVUYyp6t5LleVotQQme07IJVdVnIOVFFtKEmzt8e2k=";
   };
 
-  vendorSha256 = "sha256-J8weaJSC+k8BnijG2Jm2GYUZmEhASrrCDxb46ZGmCMI=";
+  vendorHash = "sha256-A3lZtV0pXh4KxINl413xGbw2Pz7OzvIQiFSRubH428c=";
 
   ldflags = [ "-s" "-w" "-X main.Version=v${version}" ];
 

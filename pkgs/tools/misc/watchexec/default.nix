@@ -2,24 +2,28 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "watchexec";
-  version = "1.20.6";
+  version = "2.1.2";
 
   src = fetchFromGitHub {
     owner = pname;
     repo = pname;
-    rev = "cli-v${version}";
-    sha256 = "sha256-IF0VnFh3UeJ6pB/DvwlKXzivZqRYzOE4/39qHNcPVcc=";
+    rev = "v${version}";
+    hash = "sha256-mH670pBxSQQ4mTtX6O71aRRxRVyz0J7r4227UsUJ5LE=";
   };
 
-  cargoSha256 = "sha256-9XUZL34yHNIOq9Z9xP2+h8C4KUMkl8wAZbKnzppn300=";
+  cargoHash = "sha256-cBxFaERUDaOxAYfpvBdJa9LxvrG2niJqVovcZDucbUA=";
 
   nativeBuildInputs = [ installShellFiles ];
 
-  buildInputs = lib.optionals stdenv.isDarwin [ Cocoa AppKit ];
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ Cocoa AppKit ];
 
-  NIX_LDFLAGS = lib.optionalString stdenv.isDarwin "-framework AppKit";
+  NIX_LDFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-framework AppKit";
 
   checkFlags = [ "--skip=help" "--skip=help_short" ];
+
+  postPatch = ''
+    rm .cargo/config.toml
+  '';
 
   postInstall = ''
     installManPage doc/watchexec.1
@@ -31,5 +35,6 @@ rustPlatform.buildRustPackage rec {
     homepage = "https://watchexec.github.io/";
     license = with licenses; [ asl20 ];
     maintainers = [ maintainers.michalrus ];
+    mainProgram = "watchexec";
   };
 }

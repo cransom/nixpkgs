@@ -1,47 +1,64 @@
-declare -a projectFile testProjectFile
-
-# Inherit arguments from derivation
-dotnetFlags=( ${dotnetFlags[@]-} )
-dotnetRestoreFlags=( ${dotnetRestoreFlags[@]-} )
-
 dotnetConfigureHook() {
     echo "Executing dotnetConfigureHook"
 
     runHook preConfigure
 
-    if [ -z "${enableParallelBuilding-}" ]; then
+    local -r dynamicLinker=@dynamicLinker@
+    local -r libPath=@libPath@
+
+    if [[ -n $__structuredAttrs ]]; then
+        local dotnetProjectFilesArray=( "${dotnetProjectFiles[@]}" )
+        local dotnetTestProjectFilesArray=( "${dotnetTestProjectFiles[@]}" )
+        local dotnetFlagsArray=( "${dotnetFlags[@]}" )
+        local dotnetRestoreFlagsArray=( "${dotnetRestoreFlags[@]}" )
+        local dotnetRuntimeIdsArray=( "${dotnetRuntimeIds[@]}" )
+    else
+        local dotnetProjectFilesArray=($dotnetProjectFiles)
+        local dotnetTestProjectFilesArray=($dotnetTestProjectFiles)
+        local dotnetFlagsArray=($dotnetFlags)
+        local dotnetRestoreFlagsArray=($dotnetRestoreFlags)
+        local dotnetRuntimeIdsArray=($dotnetRuntimeIds)
+    fi
+
+    if [[ -z ${enableParallelBuilding-} ]]; then
         local -r parallelFlag="--disable-parallel"
     fi
 
     dotnetRestore() {
-        local -r project="${1-}"
-        env dotnet restore ${project-} \
-            -p:ContinuousIntegrationBuild=true \
-            -p:Deterministic=true \
-            --runtime "@runtimeId@" \
-            --source "@nugetSource@/lib" \
-            ${parallelFlag-} \
-            ${dotnetRestoreFlags[@]} \
-            ${dotnetFlags[@]}
+        local -r projectFile="${1-}"
+        for runtimeId in "${dotnetRuntimeIdsArray[@]}"; do
+            dotnet restore ${1+"$projectFile"} \
+                -p:ContinuousIntegrationBuild=true \
+                -p:Deterministic=true \
+                -p:NuGetAudit=false \
+                --runtime "$runtimeId" \
+                ${parallelFlag-} \
+                "${dotnetRestoreFlagsArray[@]}" \
+                "${dotnetFlagsArray[@]}"
+        done
     }
 
-    (( "${#projectFile[@]}" == 0 )) && dotnetRestore
+    if [[ -f .config/dotnet-tools.json || -f dotnet-tools.json ]]; then
+        dotnet tool restore
+    fi
 
-    # Generate a NuGet.config file to make sure everything,
-    # including things like <Sdk /> dependencies, is restored from the proper source
-cat <<EOF > "./NuGet.config"
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="nugetSource" value="@nugetSource@/lib" />
-  </packageSources>
-</configuration>
-EOF
+    # dotnetGlobalTool is set in buildDotnetGlobalTool to patch dependencies but
+    # avoid other project-specific logic. This is a hack, but the old behavior
+    # is worse as it relied on a bug: setting projectFile to an empty string
+    # made the hooks actually skip all project-specific logic. It’s hard to keep
+    # backwards compatibility with this odd behavior now since we are using
+    # arrays, so instead we just pass a variable to indicate that we don’t have
+    # projects.
+    if [[ -z ${dotnetGlobalTool-} ]]; then
+        if (( ${#dotnetProjectFilesArray[@]} == 0 )); then
+            dotnetRestore
+        fi
 
-    for project in ${projectFile[@]} ${testProjectFile[@]-}; do
-        dotnetRestore "$project"
-    done
+        local projectFile
+        for projectFile in "${dotnetProjectFilesArray[@]}" "${dotnetTestProjectFilesArray[@]}"; do
+            dotnetRestore "$projectFile"
+        done
+    fi
 
     runHook postConfigure
 

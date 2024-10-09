@@ -1,7 +1,7 @@
-{ lib, fetchurl, fetchFromGitLab, gettext, wrapGAppsHook
+{ lib, fetchurl, gettext, wrapGAppsHook3
 
 # Native dependencies
-, python3, gtk3, gobject-introspection, gnome
+, python3, gtk3, gobject-introspection, adwaita-icon-theme
 , gtksourceview4
 , glib-networking
 
@@ -15,22 +15,24 @@
 , enableRST ? true, docutils
 , enableSpelling ? true, gspell
 , enableUPnP ? true, gupnp-igd
-, enableOmemoPluginDependencies ? true
 , enableAppIndicator ? true, libappindicator-gtk3
 , extraPythonPackages ? ps: []
 }:
 
 python3.pkgs.buildPythonApplication rec {
   pname = "gajim";
-  version = "1.6.1";
+  version = "1.9.3";
 
   src = fetchurl {
     url = "https://gajim.org/downloads/${lib.versions.majorMinor version}/gajim-${version}.tar.gz";
-    hash = "sha256-3D87Ou/842WqbaUiJV1hRZFVkZzQ12GXCpRc8F3rKPQ=";
+    hash = "sha256-TxWyUDoBvscKa2ogPrFlzLC2q+5RMyMnAiOpQdpFP4M=";
   };
 
+  format = "pyproject";
+
   buildInputs = [
-    gobject-introspection gtk3 gnome.adwaita-icon-theme
+    gtk3
+    adwaita-icon-theme
     gtksourceview4
     glib-networking
   ] ++ lib.optionals enableJingle [ farstream gstreamer gst-plugins-base gst-libav gst-plugins-good libnice ]
@@ -40,7 +42,7 @@ python3.pkgs.buildPythonApplication rec {
     ++ lib.optional enableAppIndicator libappindicator-gtk3;
 
   nativeBuildInputs = [
-    gettext wrapGAppsHook
+    gettext wrapGAppsHook3 gobject-introspection
   ];
 
   dontWrapGApps = true;
@@ -51,12 +53,20 @@ python3.pkgs.buildPythonApplication rec {
 
   propagatedBuildInputs = with python3.pkgs; [
     nbxmpp pygobject3 dbus-python pillow css-parser precis-i18n keyring setuptools packaging gssapi
+    omemo-dr qrcode sqlalchemy emoji
   ] ++ lib.optionals enableE2E [ pycrypto python-gnupg ]
     ++ lib.optional enableRST docutils
-    ++ lib.optionals enableOmemoPluginDependencies [ python-axolotl qrcode ]
     ++ extraPythonPackages python3.pkgs;
 
   nativeCheckInputs = [ xvfb-run dbus ];
+
+  preBuild = ''
+    python pep517build/build_metadata.py -o dist/metadata
+  '';
+
+  postInstall = ''
+    python pep517build/install_metadata.py dist/metadata --prefix=$out
+  '';
 
   checkPhase = ''
     xvfb-run dbus-run-session \
@@ -65,7 +75,10 @@ python3.pkgs.buildPythonApplication rec {
     ${python3.interpreter} -m unittest discover -s test/common -v
   '';
 
-  # necessary for wrapGAppsHook
+  # test are broken in 1.7.3, 1.8.0
+  doCheck = false;
+
+  # necessary for wrapGAppsHook3
   strictDeps = false;
 
   meta = {
@@ -75,5 +88,6 @@ python3.pkgs.buildPythonApplication rec {
     maintainers = with lib.maintainers; [ raskin abbradar ];
     downloadPage = "http://gajim.org/download/";
     platforms = lib.platforms.linux;
+    mainProgram = "gajim";
   };
 }

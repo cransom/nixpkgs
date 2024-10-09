@@ -1,12 +1,16 @@
-{ stdenv, fetchurl, perl, icu, zlib, gmp, lib, nqp, removeReferencesTo }:
+{ stdenv, fetchFromGitHub, perl, icu, zlib, gmp, lib, nqp, removeReferencesTo }:
 
 stdenv.mkDerivation rec {
   pname = "rakudo";
-  version = "2022.07";
+  version = "2024.06";
 
-  src = fetchurl {
-    url = "https://rakudo.org/dl/rakudo/rakudo-${version}.tar.gz";
-    hash = "sha256-ejvJ1lTh0nkqBVtPrxFu820UH2tq3eeqcDF3BfJgkK0=";
+  # nixpkgs-update: no auto update
+  src = fetchFromGitHub {
+    owner = "rakudo";
+    repo = "rakudo";
+    rev = version;
+    hash = "sha256-6XWfM7KJB+lMf/YFLaQ71DMa8owZtjjuMEyWY++CJnM=";
+    fetchSubmodules = true;
   };
 
   nativeBuildInputs = [ removeReferencesTo ];
@@ -28,6 +32,6 @@ stdenv.mkDerivation rec {
     homepage = "https://rakudo.org";
     license = licenses.artistic2;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ thoughtpolice vrthra sgo ];
+    maintainers = with maintainers; [ thoughtpolice sgo ];
   };
 }

@@ -2,7 +2,7 @@
 
 qtModule {
   pname = "qttools";
-  qtInputs = [ qtbase qtdeclarative ];
+  propagatedBuildInputs = [ qtbase qtdeclarative ];
   outputs = [ "out" "dev" "bin" ];
 
   # fixQtBuiltinPaths overwrites a builtin path we should keep
@@ -32,11 +32,11 @@ qtModule {
     "bin/qthelpconverter"
     "bin/lprodump"
     "bin/qdistancefieldgenerator"
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "bin/macdeployqt"
   ];
 
-  NIX_CFLAGS_COMPILE = lib.optional stdenv.isDarwin ''-DNIXPKGS_QMLIMPORTSCANNER="${qtdeclarative.dev}/bin/qmlimportscanner"'';
+  env.NIX_CFLAGS_COMPILE = lib.optionalString (stdenv.hostPlatform.isDarwin && qtdeclarative != null) ''-DNIXPKGS_QMLIMPORTSCANNER="${qtdeclarative.dev}/bin/qmlimportscanner"'';
 
   setupHook = ../hooks/qttools-setup-hook.sh;
 }

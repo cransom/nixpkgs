@@ -1,4 +1,4 @@
-{ lib, buildDunePackage, alcotest, logs, lwt, fmt
+{ buildDunePackage, alcotest, logs, lwt, fmt
 , re, cmdliner
 }:
 
@@ -6,6 +6,8 @@ buildDunePackage {
   pname = "alcotest-lwt";
 
   inherit (alcotest) version src;
+
+  duneVersion = "3";
 
   propagatedBuildInputs = [ alcotest logs lwt fmt ];
 

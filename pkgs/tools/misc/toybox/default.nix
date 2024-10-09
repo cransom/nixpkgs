@@ -12,19 +12,19 @@ in
 
 stdenv.mkDerivation rec {
   pname = "toybox";
-  version = "0.8.8";
+  version = "0.8.11";
 
   src = fetchFromGitHub {
     owner = "landley";
     repo = pname;
     rev = version;
-    sha256 = "sha256-T3qE9xlcEoZOcY52XfYPpN34zzQl6mfcRnyuldnIvCk=";
+    sha256 = "sha256-7izs2C5/czec0Dt3apL8s7luARAlw4PfUFy9Xsxb0zw=";
   };
 
   depsBuildBuild = optionals (stdenv.hostPlatform != stdenv.buildPlatform) [ buildPackages.stdenv.cc ];
   buildInputs = [
     libxcrypt
-  ] ++ optionals stdenv.isDarwin [
+  ] ++ optionals stdenv.hostPlatform.isDarwin [
     libiconv
   ] ++ optionals (enableStatic && stdenv.cc.libc ? static) [
     stdenv.cc.libc
@@ -40,10 +40,10 @@ stdenv.mkDerivation rec {
     make ${if enableMinimal then
       "allnoconfig"
     else
-      if stdenv.isFreeBSD then
+      if stdenv.hostPlatform.isFreeBSD then
         "freebsd_defconfig"
       else
-        if stdenv.isDarwin then
+        if stdenv.hostPlatform.isDarwin then
           "macos_defconfig"
         else
           "defconfig"
@@ -66,7 +66,7 @@ stdenv.mkDerivation rec {
   nativeCheckInputs = [ which ]; # used for tests with checkFlags = [ "DEBUG=true" ];
   checkTarget = "tests";
 
-  NIX_CFLAGS_COMPILE = "-Wno-error";
+  env.NIX_CFLAGS_COMPILE = "-Wno-error";
 
   meta = with lib; {
     description = "Lightweight implementation of some Unix command line utilities";

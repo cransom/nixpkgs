@@ -1,4 +1,4 @@
-{ lib, buildDunePackage, metrics
+{ buildDunePackage, metrics
 , fmt, logs
 }:
 
@@ -7,6 +7,7 @@ buildDunePackage {
   inherit (metrics) src version;
 
   minimalOCamlVersion = "4.08";
+  duneVersion = "3";
 
   propagatedBuildInputs = [ fmt logs metrics ];
 

@@ -1,14 +1,13 @@
 { stdenv
 , lib
 , autoPatchelfHook
-, buildFHSUserEnv
+, buildFHSEnv
 , cairo
 , dpkg
 , fetchurl
 , gcc-unwrapped
 , glib
 , glibc
-, gnome2
 , gtk2-x11
 , libGL
 , libpulseaudio
@@ -18,7 +17,7 @@
 , openssl_1_1
 , pango
 , SDL2
-, wrapGAppsHook
+, wrapGAppsHook3
 , xdg-utils
 , xorg
 , xorg_sys_opengl
@@ -40,7 +39,7 @@ let
     nativeBuildInputs = [
       autoPatchelfHook
       dpkg
-      wrapGAppsHook
+      wrapGAppsHook3
     ];
 
     buildInputs = [
@@ -109,10 +108,10 @@ in
 
   /*
   * We can patch the runescape launcher, but it downloads a client at runtime and checks it for changes.
-  * For that we need use a buildFHSUserEnv.
+  * For that we need use a buildFHSEnv.
   * FHS simulates a classic linux shell
   */
-  buildFHSUserEnv {
+  buildFHSEnv {
     name = "RuneScape";
     targetPkgs = pkgs: [
       runescape

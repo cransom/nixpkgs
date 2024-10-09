@@ -1,65 +1,100 @@
-{ stdenv
-, lib
-, fetchzip
-, autoPatchelfHook
-, makeWrapper
-, copyDesktopItems
-, makeDesktopItem
-, gtk3
-, openssl
-, xdg-user-dirs
-, keybinder3
+{
+  stdenvNoCC,
+  lib,
+  fetchzip,
+  autoPatchelfHook,
+  makeWrapper,
+  copyDesktopItems,
+  makeDesktopItem,
+  gtk3,
+  xdg-user-dirs,
+  keybinder3,
+  libnotify,
 }:
 
-stdenv.mkDerivation rec {
+let
+  dist =
+    rec {
+      x86_64-linux = {
+        urlSuffix = "linux-x86_64.tar.gz";
+        hash = "sha256-sQ3dxwPWHLUoWgnR9+oHaFoDzXxtwKRiBvz2wkFB01g=";
+      };
+      x86_64-darwin = {
+        urlSuffix = "macos-universal.zip";
+        hash = "sha256-4bU/qecZBrTr34SZAjDDgwpXAAHDITz6lV6mJGjElko=";
+      };
+      aarch64-darwin = x86_64-darwin;
+    }
+    ."${stdenvNoCC.hostPlatform.system}"
+      or (throw "appflowy: No source for system: ${stdenvNoCC.hostPlatform.system}");
+in
+stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "appflowy";
-  version = "0.0.9";
+  version = "0.6.8";
 
   src = fetchzip {
-    url = "https://github.com/AppFlowy-IO/appflowy/releases/download/${version}/AppFlowy-linux-x86.tar.gz";
-    sha256 = "sha256-E75ZqenCs5zWBERYoIrWc2v5CyjGKLrfsae1RCi/qNQ=";
+    url = "https://github.com/AppFlowy-IO/appflowy/releases/download/${finalAttrs.version}/AppFlowy-${finalAttrs.version}-${dist.urlSuffix}";
+    inherit (dist) hash;
+    stripRoot = false;
   };
 
   nativeBuildInputs = [
-    autoPatchelfHook
     makeWrapper
     copyDesktopItems
-  ];
+  ] ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [ autoPatchelfHook ];
 
   buildInputs = [
     gtk3
-    openssl
     keybinder3
+    libnotify
   ];
 
   dontBuild = true;
   dontConfigure = true;
 
-  installPhase = ''
-    runHook preInstall
+  installPhase =
+    lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
+      runHook preInstall
 
-    mkdir -p $out/opt/
-    mkdir -p $out/bin/
+      cd AppFlowy/
 
-    # Copy archive contents to the outpout directory
-    cp -r ./* $out/opt/
+      mkdir -p $out/{bin,opt}
 
-    runHook postInstall
-  '';
+      # Copy archive contents to the outpout directory
+      cp -r ./* $out/opt/
 
-  preFixup = ''
-    # Add missing libraries to appflowy using the ones it comes with
-    makeWrapper $out/opt/app_flowy $out/bin/appflowy \
-      --set LD_LIBRARY_PATH "$out/opt/lib/" \
-      --prefix PATH : "${lib.makeBinPath [ xdg-user-dirs ]}"
-  '';
+      # Copy icon
+      install -Dm444 data/flutter_assets/assets/images/flowy_logo.svg $out/share/icons/hicolor/scalable/apps/appflowy.svg
 
-  desktopItems = [
+      runHook postInstall
+    ''
+    + lib.optionalString stdenvNoCC.hostPlatform.isDarwin ''
+      runHook preInstall
+
+      mkdir -p $out/{Applications,bin}
+      cp -r ./AppFlowy.app $out/Applications/
+
+      runHook postInstall
+    '';
+
+  preFixup =
+    lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
+      # Add missing libraries to appflowy using the ones it comes with
+      makeWrapper $out/opt/AppFlowy $out/bin/appflowy \
+        --set LD_LIBRARY_PATH "$out/opt/lib/" \
+        --prefix PATH : "${lib.makeBinPath [ xdg-user-dirs ]}"
+    ''
+    + lib.optionalString stdenvNoCC.hostPlatform.isDarwin ''
+      makeWrapper $out/Applications/AppFlowy.app/Contents/MacOS/AppFlowy $out/bin/appflowy
+    '';
+
+  desktopItems = lib.optionals stdenvNoCC.hostPlatform.isLinux [
     (makeDesktopItem {
-      name = pname;
+      name = "appflowy";
       desktopName = "AppFlowy";
-      comment = meta.description;
+      comment = finalAttrs.meta.description;
       exec = "appflowy";
+      icon = "appflowy";
       categories = [ "Office" ];
     })
   ];
@@ -69,8 +104,9 @@ stdenv.mkDerivation rec {
     homepage = "https://www.appflowy.io/";
     sourceProvenance = with sourceTypes; [ binaryNativeCode ];
     license = licenses.agpl3Only;
-    changelog = "https://github.com/AppFlowy-IO/appflowy/releases/tag/${version}";
+    changelog = "https://github.com/AppFlowy-IO/appflowy/releases/tag/${finalAttrs.version}";
     maintainers = with maintainers; [ darkonion0 ];
-    platforms = [ "x86_64-linux" ];
+    platforms = [ "x86_64-linux" ] ++ platforms.darwin;
+    mainProgram = "appflowy";
   };
-}
+})

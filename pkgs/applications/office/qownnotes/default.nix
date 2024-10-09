@@ -1,58 +1,78 @@
 { lib
 , stdenv
 , fetchurl
-, qmake
+, cmake
 , qttools
 , qtbase
 , qtdeclarative
 , qtsvg
 , qtwayland
 , qtwebsockets
-, qtx11extras
-, qtxmlpatterns
 , makeWrapper
 , wrapQtAppsHook
+, botan2
+, pkg-config
+, nixosTests
+, installShellFiles
+, xvfb-run
 }:
 
 let
   pname = "qownnotes";
   appname = "QOwnNotes";
-  version = "23.2.0";
+  version = "24.9.8";
 in
 stdenv.mkDerivation {
-  inherit pname appname version;
+  inherit pname version;
 
   src = fetchurl {
-    url = "https://download.tuxfamily.org/${pname}/src/${pname}-${version}.tar.xz";
-    sha256 = "sha256-S5m78E1wrWBu/bMmNUmv/ZprebyYPC9NDfINU2C/i8w=";
+    url = "https://github.com/pbek/QOwnNotes/releases/download/v${version}/qownnotes-${version}.tar.xz";
+    hash = "sha256-G5PLz1GzjfPM5tj3rtwJt4hR3v+oSq2bVr/llTSFbNk=";
   };
 
   nativeBuildInputs = [
-    qmake
+    cmake
     qttools
     wrapQtAppsHook
-  ] ++ lib.optionals stdenv.isDarwin [ makeWrapper ];
+    pkg-config
+    installShellFiles
+    xvfb-run
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [ makeWrapper ];
 
   buildInputs = [
     qtbase
     qtdeclarative
     qtsvg
     qtwebsockets
-    qtx11extras
-    qtxmlpatterns
-  ] ++ lib.optionals stdenv.isLinux [ qtwayland ];
+    botan2
+  ] ++ lib.optionals stdenv.hostPlatform.isLinux [ qtwayland ];
 
-  postInstall =
+  cmakeFlags = [
+    "-DQON_QT6_BUILD=ON"
+    "-DBUILD_WITH_SYSTEM_BOTAN=ON"
+  ];
+
+  postInstall = ''
+    installShellCompletion --cmd ${appname} \
+      --bash <(xvfb-run $out/bin/${appname} --completion bash) \
+      --fish <(xvfb-run $out/bin/${appname} --completion fish)
+    installShellCompletion --cmd ${pname} \
+      --bash <(xvfb-run $out/bin/${appname} --completion bash) \
+      --fish <(xvfb-run $out/bin/${appname} --completion fish)
+  ''
   # Create a lowercase symlink for Linux
-  lib.optionalString stdenv.isLinux ''
+  + lib.optionalString stdenv.hostPlatform.isLinux ''
     ln -s $out/bin/${appname} $out/bin/${pname}
   ''
   # Wrap application for macOS as lowercase binary
-  + lib.optionalString stdenv.isDarwin ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
     mkdir -p $out/Applications
     mv $out/bin/${appname}.app $out/Applications
     makeWrapper $out/Applications/${appname}.app/Contents/MacOS/${appname} $out/bin/${pname}
   '';
+
+  # Tests QOwnNotes using the NixOS module by launching xterm:
+  passthru.tests.basic-nixos-module-functionality = nixosTests.qownnotes;
 
   meta = with lib; {
     description = "Plain-text file notepad and todo-list manager with markdown support and Nextcloud/ownCloud integration";
@@ -60,7 +80,7 @@ stdenv.mkDerivation {
     changelog = "https://www.qownnotes.org/changelog.html";
     downloadPage = "https://github.com/pbek/QOwnNotes/releases/tag/v${version}";
     license = licenses.gpl2Only;
-    maintainers = with maintainers; [ totoroot ];
+    maintainers = with maintainers; [ pbek totoroot ];
     platforms = platforms.unix;
   };
 }

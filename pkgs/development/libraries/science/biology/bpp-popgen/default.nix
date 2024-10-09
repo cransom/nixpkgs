@@ -23,9 +23,10 @@ stdenv.mkDerivation rec {
   # of form /nix/store/.../nix/store/.../include,
   # probably due to relative vs absolute path issue
 
-  doCheck = !stdenv.isDarwin;
+  doCheck = !stdenv.hostPlatform.isDarwin;
 
   meta = bpp-core.meta // {
+    homepage = "https://github.com/BioPP/bpp-popgen";
     changelog = "https://github.com/BioPP/bpp-popgen/blob/master/ChangeLog";
   };
 }

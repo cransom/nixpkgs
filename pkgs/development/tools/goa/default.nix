@@ -5,20 +5,21 @@
 
 buildGoModule rec {
   pname = "goa";
-  version = "3.11.0";
+  version = "3.19.1";
 
   src = fetchFromGitHub {
     owner = "goadesign";
     repo = "goa";
     rev = "v${version}";
-    sha256 = "sha256-KgCF44kpr8dAHzLgoRKXfd9warQUiFggGZ/Dy/49j1Q=";
+    hash = "sha256-UOw0bAUvaKpMmFmAAlheALhtgXU2+Df6b/nSRH7bWHc=";
   };
-  vendorHash = "sha256-d76aeiSkW0sZeFylWIkCoquWzX78s2iaDeX3VE8cYfI=";
+  vendorHash = "sha256-IqzW5fOLLBbpPFTE5PiOISdmp3Gq6b8SUbG4CbbU01s=";
 
   subPackages = [ "cmd/goa" ];
 
   meta = with lib; {
     description = "Design-based APIs and microservices in Go";
+    mainProgram = "goa";
     homepage = "https://goa.design";
     license = licenses.mit;
     maintainers = with maintainers; [ rushmorem ];

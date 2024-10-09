@@ -6,11 +6,11 @@
 
 stdenvNoCC.mkDerivation rec {
   pname = "roboto-serif";
-  version = "1.007";
+  version = "1.008";
 
   src = fetchurl {
     url = "https://github.com/googlefonts/roboto-serif/releases/download/v${version}/RobotoSerifFonts-v${version}.zip";
-    hash = "sha256-A14GztkTvaLBvcm1i3A0Vi9vaz77nFYYoSNggqbffFo=";
+    hash = "sha256-Nm9DcxL0CgA51nGeZJPWSCipgqwnNPlhj0wHyGhLaYQ=";
   };
 
   sourceRoot = ".";
@@ -28,7 +28,7 @@ stdenvNoCC.mkDerivation rec {
   '';
 
   meta = with lib; {
-    description = "The Roboto family of fonts";
+    description = "Roboto family of fonts";
     longDescription = ''
       Google’s signature family of fonts, the default font on Android and
       Chrome OS, and the recommended font for Google’s visual language,

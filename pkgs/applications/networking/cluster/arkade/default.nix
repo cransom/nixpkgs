@@ -1,5 +1,4 @@
 { lib
-, stdenv
 , buildGoModule
 , fetchFromGitHub
 , installShellFiles
@@ -7,20 +6,20 @@
 
 buildGoModule rec {
   pname = "arkade";
-  version = "0.8.62";
+  version = "0.11.27";
 
   src = fetchFromGitHub {
     owner = "alexellis";
     repo = "arkade";
     rev = version;
-    sha256 = "sha256-lnMinIZ1n94ks7H5tlYmgaDDHyGi5YxTM9dTrckQ9y0=";
+    hash = "sha256-5/QAtaAAiIzpvOl43A4OqnIcKlfdxehGjmCREFRKXTs=";
   };
 
   CGO_ENABLED = 0;
 
   nativeBuildInputs = [ installShellFiles ];
 
-  vendorHash = "sha256-WQsnBBx05wXKDS7h3bhipTqZTQLxRjVLObuMNUfAiTk=";
+  vendorHash = null;
 
   # Exclude pkg/get: tests downloading of binaries which fail when sandbox=true
   subPackages = [
@@ -37,8 +36,8 @@ buildGoModule rec {
 
   ldflags = [
     "-s" "-w"
-    "-X github.com/alexellis/arkade/cmd.GitCommit=ref/tags/${version}"
-    "-X github.com/alexellis/arkade/cmd.Version=${version}"
+    "-X github.com/alexellis/arkade/pkg.GitCommit=ref/tags/${version}"
+    "-X github.com/alexellis/arkade/pkg.Version=${version}"
   ];
 
   postInstall = ''
@@ -51,7 +50,8 @@ buildGoModule rec {
   meta = with lib; {
     homepage = "https://github.com/alexellis/arkade";
     description = "Open Source Kubernetes Marketplace";
+    mainProgram = "arkade";
     license = licenses.mit;
-    maintainers = with maintainers; [ welteki techknowlogick ];
+    maintainers = with maintainers; [ welteki techknowlogick qjoly ];
   };
 }

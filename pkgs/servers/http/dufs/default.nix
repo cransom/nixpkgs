@@ -1,40 +1,51 @@
-{ stdenv, lib, fetchFromGitHub, rustPlatform, Security, openssl, pkg-config }:
+{ lib
+, rustPlatform
+, fetchFromGitHub
+, installShellFiles
+, stdenv
+, darwin
+}:
 
 rustPlatform.buildRustPackage rec {
   pname = "dufs";
-  version = "0.31.0";
+  version = "0.42.0";
 
   src = fetchFromGitHub {
     owner = "sigoden";
-    repo = pname;
+    repo = "dufs";
     rev = "v${version}";
-    sha256 = "sha256-fR3CeF+ScvDoPJaevAAShUdZDDjD/ocZQl7dIk2jHso=";
+    hash = "sha256-eada2xQlzB1kknwitwxZhFiv6myTbtYHHFkQtppa0tc=";
   };
 
-  cargoSha256 = "sha256-VH/eu0qLh59J6uyj0RSqqEhlwghYg/JPp6u54BQzLPo=";
+  cargoHash = "sha256-juT3trREV7LmjBz+x7Od4XoTGuL1XRhknbU4Nopg2HU=";
 
-  nativeBuildInputs = lib.optionals stdenv.isLinux [
-    pkg-config
-  ];
+  nativeBuildInputs = [ installShellFiles ];
 
-  buildInputs = lib.optionals stdenv.isLinux [
-    openssl
-  ] ++ lib.optionals stdenv.isDarwin [
-    Security
+  buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [
+    darwin.apple_sdk.frameworks.Security
   ];
 
   # FIXME: checkPhase on darwin will leave some zombie spawn processes
   # see https://github.com/NixOS/nixpkgs/issues/205620
-  doCheck = !stdenv.isDarwin;
+  doCheck = !stdenv.hostPlatform.isDarwin;
   checkFlags = [
     # tests depend on network interface, may fail with virtual IPs.
     "--skip=validate_printed_urls"
   ];
 
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+    installShellCompletion --cmd dufs \
+      --bash <($out/bin/dufs --completions bash) \
+      --fish <($out/bin/dufs --completions fish) \
+      --zsh <($out/bin/dufs --completions zsh)
+  '';
+
   meta = with lib; {
-    description = "A file server that supports static serving, uploading, searching, accessing control, webdav";
+    description = "File server that supports static serving, uploading, searching, accessing control, webdav";
+    mainProgram = "dufs";
     homepage = "https://github.com/sigoden/dufs";
+    changelog = "https://github.com/sigoden/dufs/blob/${src.rev}/CHANGELOG.md";
     license = with licenses; [ asl20 /* or */ mit ];
-    maintainers = [ maintainers.holymonson ];
+    maintainers = with maintainers; [ figsoda holymonson ];
   };
 }

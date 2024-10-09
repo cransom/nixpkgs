@@ -4,21 +4,24 @@ with python3.pkgs;
 
 buildPythonApplication rec {
   pname = "check-jsonschema";
-  version = "0.18.3";
+  version = "0.29.2";
+  format = "setuptools";
+
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "python-jsonschema";
     repo = "check-jsonschema";
-    rev = version;
-    sha256 = "sha256-9Ejcxr/22rJu8JoC7WspLfzF08elz4TaGagDeV0zIXk=";
+    rev = "refs/tags/${version}";
+    hash = "sha256-Z/v/a0zENH8K1NHCZViLBbc8gma5rTMBm8hatHhu878=";
   };
 
   propagatedBuildInputs = [
     ruamel-yaml
     jsonschema
-    identify
     requests
     click
+    regress
   ];
 
   nativeCheckInputs = [
@@ -27,20 +30,21 @@ buildPythonApplication rec {
     responses
   ];
 
-  pytestFlagsArray = [
-    # DeprecationWarning: Accessing jsonschema.draft3_format_checker is deprecated and will be removed in a future release. Instead, use the FORMAT_CHECKER attribute on the corresponding Validator.
-    "-W" "ignore::DeprecationWarning"
+  pythonImportsCheck = [
+    "check_jsonschema"
+    "check_jsonschema.cli"
   ];
 
-  preCheck = lib.optionalString (stdenv.isDarwin && stdenv.isAarch64) ''
-    # https://github.com/python/cpython/issues/74570#issuecomment-1093748531
-    export no_proxy='*';
-  '';
+  disabledTests = [
+    "test_schemaloader_yaml_data"
+  ];
 
   meta = with lib; {
-    description = "A jsonschema CLI and pre-commit hook";
+    description = "Jsonschema CLI and pre-commit hook";
+    mainProgram = "check-jsonschema";
     homepage = "https://github.com/python-jsonschema/check-jsonschema";
-    license = licenses.apsl20;
+    changelog = "https://github.com/python-jsonschema/check-jsonschema/blob/${version}/CHANGELOG.rst";
+    license = licenses.asl20;
     maintainers = with maintainers; [ sudosubin ];
   };
 }

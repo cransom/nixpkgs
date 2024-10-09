@@ -3,26 +3,25 @@
   buildGoModule,
   fetchFromGitHub,
   installShellFiles,
+  nixosTests,
 }:
 buildGoModule rec {
   pname = "headscale";
-  version = "0.20.0";
+  version = "0.23.0";
 
   src = fetchFromGitHub {
     owner = "juanfont";
     repo = "headscale";
     rev = "v${version}";
-    hash = "sha256-RqJrqY1Eh5/TY+vMAO5fABmeV5aSzcLD4fX7j1QDN6w=";
+    hash = "sha256-5tlnVNpn+hJayxHjTpbOO3kRInOYOFz0pe9pwjXZlBE=";
   };
 
-  vendorHash = "sha256-8p5NFxXKaZPsW4B6NMzfi0pqfVroIahSgA0fukvB3JI=";
+  vendorHash = "sha256-+8dOxPG/Q+wuHgRwwWqdphHOuop0W9dVyClyQuh7aRc=";
 
   ldflags = ["-s" "-w" "-X github.com/juanfont/headscale/cmd/headscale/cli.Version=v${version}"];
 
   nativeBuildInputs = [installShellFiles];
   checkFlags = ["-short"];
-
-  tags = ["ts2019"];
 
   postInstall = ''
     installShellCompletion --cmd headscale \
@@ -31,9 +30,11 @@ buildGoModule rec {
       --zsh <($out/bin/headscale completion zsh)
   '';
 
+  passthru.tests = {inherit (nixosTests) headscale;};
+
   meta = with lib; {
     homepage = "https://github.com/juanfont/headscale";
-    description = "An open source, self-hosted implementation of the Tailscale control server";
+    description = "Open source, self-hosted implementation of the Tailscale control server";
     longDescription = ''
       Tailscale is a modern VPN built on top of Wireguard. It works like an
       overlay network between the computers of your networks - using all kinds
@@ -51,6 +52,7 @@ buildGoModule rec {
       Headscale implements this coordination server.
     '';
     license = licenses.bsd3;
+    mainProgram = "headscale";
     maintainers = with maintainers; [nkje jk kradalby misterio77 ghuntley];
   };
 }

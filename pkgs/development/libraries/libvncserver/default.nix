@@ -1,13 +1,13 @@
 { lib
 , stdenv
 , fetchFromGitHub
-, fetchpatch
 , cmake
 , libjpeg
 , openssl
 , zlib
 , libgcrypt
 , libpng
+, withSystemd ? lib.meta.availableOn stdenv.hostPlatform systemd
 , systemd
 , Carbon
 }:
@@ -25,8 +25,17 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-kqVZeCTp+Z6BtB6nzkwmtkJ4wtmjlSQBg05lD02cVvQ=";
   };
 
+  patches = [
+    # fix generated pkg-config files
+    ./pkgconfig.patch
+  ];
+
   nativeBuildInputs = [
     cmake
+  ];
+
+  cmakeFlags = [
+    "-DWITH_SYSTEMD=${if withSystemd then "ON" else "OFF"}"
   ];
 
   buildInputs = [
@@ -34,9 +43,9 @@ stdenv.mkDerivation rec {
     openssl
     libgcrypt
     libpng
-  ] ++ lib.optionals stdenv.isLinux [
+  ] ++ lib.optionals withSystemd [
     systemd
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     Carbon
   ];
 

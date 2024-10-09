@@ -1,35 +1,31 @@
 { lib, stdenv, fetchurl
+, removeReferencesTo
+, runtimeShellPackage
 # TODO: links -lsigsegv but loses the reference for some reason
 , withSigsegv ? (false && stdenv.hostPlatform.system != "x86_64-cygwin"), libsigsegv
 , interactive ? false, readline
 , autoreconfHook # no-pma fix
 
 /* Test suite broke on:
-       stdenv.isCygwin # XXX: `test-dup2' segfaults on Cygwin 6.1
-    || stdenv.isDarwin # XXX: `locale' segfaults
-    || stdenv.isSunOS  # XXX: `_backsmalls1' fails, locale stuff?
-    || stdenv.isFreeBSD
+       stdenv.hostPlatform.isCygwin # XXX: `test-dup2' segfaults on Cygwin 6.1
+    || stdenv.hostPlatform.isDarwin # XXX: `locale' segfaults
+    || stdenv.hostPlatform.isSunOS  # XXX: `_backsmalls1' fails, locale stuff?
+    || stdenv.hostPlatform.isFreeBSD
 */
-, doCheck ? (interactive && stdenv.isLinux), glibcLocales ? null
+, doCheck ? (interactive && stdenv.hostPlatform.isLinux), glibcLocales ? null
 , locale ? null
 }:
 
-assert (doCheck && stdenv.isLinux) -> glibcLocales != null;
+assert (doCheck && stdenv.hostPlatform.isLinux) -> glibcLocales != null;
 
 stdenv.mkDerivation rec {
   pname = "gawk" + lib.optionalString interactive "-interactive";
-  version = "5.2.1";
+  version = "5.2.2";
 
   src = fetchurl {
     url = "mirror://gnu/gawk/gawk-${version}.tar.xz";
-    hash = "sha256-ZzVTuR+eGMxXku1RB1341RDJBA9VCm904Jya3SQ6fk8=";
+    hash = "sha256-PB/OFEa0y+4c0nO9fsZLyH2J9hU3RxzT4F4zqWWiUOk=";
   };
-
-  patches = [
-    # Pull upstream fix for aarch64-darwin where pma does not work.
-    # Can be removed after next gawk release.
-    ./darwin-no-pma.patch
-  ];
 
   # PIE is incompatible with the "persistent malloc" ("pma") feature.
   # While build system attempts to pass -no-pie to gcc. nixpkgs' `ld`
@@ -41,13 +37,25 @@ stdenv.mkDerivation rec {
   outputs = [ "out" "info" ]
     ++ lib.optional (!interactive) "man";
 
-  # no-pma fix
-  nativeBuildInputs = [ autoreconfHook ]
-    ++ lib.optional (doCheck && stdenv.isLinux) glibcLocales;
+  strictDeps = true;
 
-  buildInputs = lib.optional withSigsegv libsigsegv
-    ++ lib.optional interactive readline
-    ++ lib.optional stdenv.isDarwin locale;
+  # no-pma fix
+  nativeBuildInputs = [
+    autoreconfHook
+  ] ++ lib.optionals interactive [
+    removeReferencesTo
+  ] ++ lib.optionals (doCheck && stdenv.hostPlatform.isLinux) [
+    glibcLocales
+  ];
+
+  buildInputs = lib.optionals interactive [
+    runtimeShellPackage
+    readline
+  ] ++ lib.optionals withSigsegv [
+    libsigsegv
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    locale
+  ];
 
   configureFlags = [
     (if withSigsegv then "--with-libsigsegv-prefix=${libsigsegv}" else "--without-libsigsegv")
@@ -60,7 +68,12 @@ stdenv.mkDerivation rec {
 
   inherit doCheck;
 
-  postInstall = ''
+  postInstall = (if interactive then ''
+    remove-references-to -t "$NIX_CC" "$out"/bin/gawkbug
+    patchShebangs --host "$out"/bin/gawkbug
+  '' else ''
+    rm "$out"/bin/gawkbug
+  '') + ''
     rm "$out"/bin/gawk-*
     ln -s gawk.1 "''${!outputMan}"/share/man/man1/awk.1
   '';
@@ -88,5 +101,6 @@ stdenv.mkDerivation rec {
     license = licenses.gpl3Plus;
     platforms = platforms.unix ++ platforms.windows;
     maintainers = [ ];
+    mainProgram = "gawk";
   };
 }

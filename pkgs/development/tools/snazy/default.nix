@@ -1,21 +1,26 @@
-{ lib, rustPlatform, fetchFromGitHub, installShellFiles }:
+{ lib
+, rustPlatform
+, fetchFromGitHub
+, installShellFiles
+, stdenv
+}:
 
 rustPlatform.buildRustPackage rec {
   pname = "snazy";
-  version = "0.50.0";
+  version = "0.53.0";
 
   src = fetchFromGitHub {
     owner = "chmouel";
     repo = pname;
     rev = version;
-    sha256 = "sha256-wSRIJF2XPJvzmxuGbuPYPFgn9Eap3vqHT1CM/oQy8vM=";
+    hash = "sha256-iRoNmqZadwUxowcC/emqdGhOWMl5c1OJr/VVyxYg2h0=";
   };
 
-  cargoSha256 = "sha256-IGZZEyy9IGqkpsbnOzLdBSFbinZ7jhH2LWub/+gP89E=";
+  cargoHash = "sha256-e39lmGEPRU/vATcJKB89+B/STi1viP6r43X4Y2u/fe4=";
 
   nativeBuildInputs = [ installShellFiles ];
 
-  postInstall = ''
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd snazy \
       --bash <($out/bin/snazy --shell-completion bash) \
       --fish <($out/bin/snazy --shell-completion fish) \
@@ -31,13 +36,14 @@ rustPlatform.buildRustPackage rec {
   '';
 
   meta = with lib; {
-    homepage = "https://github.com/chmouel/snazy/";
-    changelog = "https://github.com/chmouel/snazy/releases/tag/v${version}";
-    description = "A snazzy json log viewer";
+    description = "Snazzy json log viewer";
+    mainProgram = "snazy";
     longDescription = ''
       Snazy is a simple tool to parse json logs and output them in a nice format
       with nice colors.
     '';
+    homepage = "https://github.com/chmouel/snazy/";
+    changelog = "https://github.com/chmouel/snazy/releases/tag/${src.rev}";
     license = licenses.asl20;
     maintainers = with maintainers; [ figsoda jk ];
   };

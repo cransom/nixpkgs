@@ -23,7 +23,7 @@ import ./make-test-python.nix ({ pkgs, ... }: {
             "traefik.http.routers.nginx.rule=Host(`nginx.traefik.test`)"
           ];
           image = "nginx-container";
-          imageFile = pkgs.dockerTools.examples.nginx;
+          imageStream = pkgs.dockerTools.examples.nginxStream;
         };
       };
 
@@ -52,10 +52,13 @@ import ./make-test-python.nix ({ pkgs, ... }: {
             sendAnonymousUsage = false;
           };
 
-          entryPoints.web.address = ":80";
+          entryPoints.web.address = ":\${HTTP_PORT}";
 
           providers.docker.exposedByDefault = false;
         };
+        environmentFiles = [(pkgs.writeText "traefik.env" ''
+          HTTP_PORT=80
+        '')];
       };
 
       systemd.services.simplehttp = {

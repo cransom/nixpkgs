@@ -1,78 +1,91 @@
-{ lib, python3, fetchFromGitHub, fetchurl }:
-let
-  python = python3.override {
-    # override resolvelib due to
-    # 1. pdm requiring a later version of resolvelib
-    # 2. Ansible being packaged as a library
-    # 3. Ansible being unable to upgrade to a later version of resolvelib
-    # see here for more details: https://github.com/NixOS/nixpkgs/pull/155380/files#r786255738
-    packageOverrides = self: super: {
-      resolvelib = super.resolvelib.overridePythonAttrs (attrs: rec {
-        version = "0.9.0";
-        src = fetchFromGitHub {
-          owner = "sarugaku";
-          repo = "resolvelib";
-          rev = "/refs/tags/${version}";
-          hash = "sha256-xzu8sMNMihJ80vezMdGkOT5Etx08qy3T/TkEn5EAY48=";
-        };
-      });
-    };
-    self = python;
-  };
-in
+{
+  lib,
+  python3,
+  fetchFromGitHub,
+  runtimeShell,
+  installShellFiles,
+  testers,
+  pdm,
+}:
 
-with python.pkgs;
-buildPythonApplication rec {
+python3.pkgs.buildPythonApplication rec {
   pname = "pdm";
-  version = "2.3.4";
-  format = "pyproject";
-  disabled = pythonOlder "3.7";
+  version = "2.19.1";
+  pyproject = true;
 
-  src = fetchPypi {
-    inherit pname version;
-    hash = "sha256-zaSNM5Ey4oI2MtUPYBHG0PCMgJdasVatwkjaRBrT1RQ=";
+  disabled = python3.pkgs.pythonOlder "3.8";
+
+  src = fetchFromGitHub {
+    owner = "pdm-project";
+    repo = "pdm";
+    rev = "refs/tags/${version}";
+    hash = "sha256-V2ZcXgRtL8zkCx5/d+L+3o0QQHVrPpFyjvjsc2auWDI=";
   };
 
-  propagatedBuildInputs = [
-    blinker
-    cachecontrol
-    certifi
-    findpython
-    installer
-    packaging
-    pdm-pep517
-    pep517
-    pip
-    platformdirs
-    pyproject-hooks
-    python-dotenv
-    requests-toolbelt
-    resolvelib
-    rich
-    shellingham
-    tomli
-    tomlkit
-    unearth
-    virtualenv
-  ]
-  ++ cachecontrol.optional-dependencies.filecache
-  ++ lib.optionals (pythonOlder "3.8") [
-    importlib-metadata
-    typing-extensions
+  nativeBuildInputs = [ installShellFiles ];
+
+  build-system = with python3.pkgs; [
+    pdm-backend
+    pdm-build-locked
   ];
 
-  nativeCheckInputs = [
+  dependencies =
+    with python3.pkgs;
+    [
+      blinker
+      dep-logic
+      filelock
+      findpython
+      hishel
+      httpx
+      installer
+      msgpack
+      packaging
+      pbs-installer
+      platformdirs
+      pyproject-hooks
+      python-dotenv
+      resolvelib
+      rich
+      shellingham
+      tomlkit
+      truststore
+      unearth
+      virtualenv
+    ]
+    ++ httpx.optional-dependencies.socks;
+
+  makeWrapperArgs = [ "--set PDM_CHECK_UPDATE 0" ];
+
+  # Silence network warning during pypaInstallPhase
+  # by disabling latest version check
+  preInstall = ''
+    export PDM_CHECK_UPDATE=0
+  '';
+
+  postInstall = ''
+    export PDM_LOG_DIR=/tmp/pdm/log
+    $out/bin/pdm completion bash >pdm.bash
+    $out/bin/pdm completion fish >pdm.fish
+    $out/bin/pdm completion zsh >pdm.zsh
+    installShellCompletion pdm.{bash,fish,zsh}
+    unset PDM_LOG_DIR
+  '';
+
+  nativeCheckInputs = with python3.pkgs; [
+    first
     pytestCheckHook
     pytest-mock
     pytest-xdist
+    pytest-httpserver
   ];
 
-  pytestFlagsArray = [
-    "-m 'not network'"
-  ];
+  pytestFlagsArray = [ "-m 'not network'" ];
 
   preCheck = ''
     export HOME=$TMPDIR
+    substituteInPlace tests/cli/test_run.py \
+      --replace-warn "/bin/bash" "${runtimeShell}"
   '';
 
   disabledTests = [
@@ -80,13 +93,29 @@ buildPythonApplication rec {
     "test_convert_setup_py_project"
     # pythonfinder isn't aware of nix's python infrastructure
     "test_use_wrapper_python"
-    "test_use_invalid_wrapper_python"
+    "test_build_with_no_isolation"
+    "test_run_script_with_inline_metadata"
+
+    # touches the network
+    "test_find_candidates_from_find_links"
+    "test_lock_all_with_excluded_groups"
+    "test_find_interpreters_with_PDM_IGNORE_ACTIVE_VENV"
+    "test_build_distributions"
   ];
 
+  __darwinAllowLocalNetworking = true;
+
+  passthru.tests.version = testers.testVersion { package = pdm; };
+
   meta = with lib; {
-    homepage = "https://pdm.fming.dev";
-    description = "A modern Python package manager with PEP 582 support";
+    homepage = "https://pdm-project.org";
+    changelog = "https://github.com/pdm-project/pdm/releases/tag/${version}";
+    description = "Modern Python package and dependency manager supporting the latest PEP standards";
     license = licenses.mit;
-    maintainers = with maintainers; [ cpcloud ];
+    maintainers = with maintainers; [
+      cpcloud
+      natsukium
+    ];
+    mainProgram = "pdm";
   };
 }

@@ -1,8 +1,8 @@
 { lib
 , stdenv
-, pkgs
 , fetchFromGitHub
-, fetchpatch
+, fetchurl
+, mpiCheckPhaseHook
 , which
 , openssh
 , gcc
@@ -13,7 +13,6 @@
 , lapack
 , python3
 , tcsh
-, bash
 , automake
 , autoconf
 , libtool
@@ -23,35 +22,44 @@
 assert blas.isILP64 == lapack.isILP64;
 
 let
-  versionGA = "5.7.2"; # Fixed by nwchem
+  versionGA = "5.8.2"; # Fixed by nwchem
 
-  ga_src = fetchFromGitHub {
+  gaSrc = fetchFromGitHub {
     owner = "GlobalArrays";
     repo = "ga";
     rev = "v${versionGA}";
-    sha256 = "0c1y9a5jpdw9nafzfmvjcln1xc2gklskaly0r1alm18ng9zng33i";
+    hash = "sha256-2ffQIg9topqKX7ygnWaa/UunL9d0Lj9qr9xucsjLuoY=";
+  };
+
+  dftd3Src = fetchurl {
+    url = "https://www.chemie.uni-bonn.de/grimme/software/dft-d3/dftd3.tgz";
+    hash = "sha256-2Xz5dY9hqoH9hUJUSPv0pujOB8EukjZzmDGjrzKID1k=";
+  };
+
+  versionLibxc = "6.1.0";
+  libxcSrc = fetchurl {
+    url = "https://gitlab.com/libxc/libxc/-/archive/${versionLibxc}/libxc-${versionLibxc}.tar.gz";
+    hash = "sha256-9ZN0X6R+v7ndxGeqr9wvoSdfDXJQxpLOl2E4mpDdjq8=";
+  };
+
+  plumedSrc = fetchFromGitHub {
+    owner = "edoapra";
+    repo = "plumed2";
+    rev = "88f06db71173e7893713a582e5ada7193e8ae1c9";
+    hash = "sha256-p5XNxHcE/QkJ5WdQH/xPp2EyrqCNjA/w/e1R2fkwYts=";
   };
 
 in
 stdenv.mkDerivation rec {
   pname = "nwchem";
-  version = "7.0.2";
+  version = "7.2.3";
 
   src = fetchFromGitHub {
     owner = "nwchemgit";
     repo = "nwchem";
     rev = "v${version}-release";
-    sha256 = "1ckhcjaw1hzdsmm1x2fva27c4rs3r0h82qivg72v53idz880hbp3";
+    hash = "sha256-2qc4kLb/WmUJuJGonIyS7pgCfyt8yXdcpDAKU0RMY58=";
   };
-
-  patches = [
-    # Fix Python 3.10 compatibility
-    (fetchpatch {
-      name = "python3.10";
-      url = "https://github.com/nwchemgit/nwchem/commit/638401361c6f294164a4f820ff867a62ac836fd5.patch";
-      sha256 = "sha256-yUZb3wWYZm1dX0HwvffksFwhVdb7ix1p8ooJnqiSgEg=";
-    })
-  ];
 
   nativeBuildInputs = [
     perl
@@ -73,8 +81,17 @@ stdenv.mkDerivation rec {
   propagatedUserEnvPkgs = [ mpi ];
 
   postUnpack = ''
-    cp -r ${ga_src}/ source/src/tools/ga-${versionGA}
+    # These run 'configure' in source tree and
+    # require a writable directory
+    cp -r ${gaSrc}/ source/src/tools/ga-${versionGA}
     chmod -R u+w source/src/tools/ga-${versionGA}
+
+    cp -r ${plumedSrc} source/src/libext/plumed/plumed2
+    chmod -R u+w source/src/libext/plumed/plumed2
+
+    # Provide tarball in expected location
+    ln -s ${dftd3Src} source/src/nwpw/nwpwlib/nwpwxc/dftd3.tgz
+    ln -s ${libxcSrc} source/src/libext/libxc/libxc-${versionLibxc}.tar.gz
   '';
 
   postPatch = ''
@@ -86,6 +103,9 @@ stdenv.mkDerivation rec {
 
     # Overwrite script, skipping the download
     echo -e '#!/bin/sh\n cd ga-${versionGA};autoreconf -ivf' > src/tools/get-tools-github
+
+    # /usr/bin/env bash fails in sandbox/Makefile setting
+    substituteInPlace src/config/makefile.h --replace '/usr/bin/env bash' "${stdenv.shell}"
 
     patchShebangs ./
   '';
@@ -119,6 +139,8 @@ stdenv.mkDerivation rec {
     export EACCSD="y"
     export IPCCSD="y"
 
+    export CCSDTQ="y"
+
     export NWCHEM_TOP="$(pwd)"
 
     runHook postConfigure
@@ -127,7 +149,7 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   preBuild = ''
-    ln -s ${ga_src} src/tools/ga-${versionGA}.tar.gz
+    ln -s ${gaSrc} src/tools/ga-${versionGA}.tar.gz
     cd src
     make nwchem_config
     ${lib.optionalString (!blas.isILP64) "make 64_to_32"}
@@ -142,13 +164,14 @@ stdenv.mkDerivation rec {
   '';
 
   installPhase = ''
+    runHook preInstall
+
     mkdir -p $out/bin $out/share/nwchem
 
     cp $NWCHEM_TOP/bin/LINUX64/nwchem $out/bin/nwchem
     cp -r $NWCHEM_TOP/src/data $out/share/nwchem/
     cp -r $NWCHEM_TOP/src/basis/libraries $out/share/nwchem/data
     cp -r $NWCHEM_TOP/src/nwpw/libraryps $out/share/nwchem/data
-    cp -r $NWCHEM_TOP/QA $out/share/nwchem
 
     wrapProgram $out/bin/nwchem \
       --set-default NWCHEM_BASIS_LIBRARY $out/share/nwchem/data/libraries/
@@ -165,27 +188,29 @@ stdenv.mkDerivation rec {
     charmm_s $out/share/nwchem/data/charmm_s/
     charmm_x $out/share/nwchem/data/charmm_x/
     EOF
+
+    runHook postInstall
   '';
 
   doCheck = false;
 
   doInstallCheck = true;
+  nativeCheckInputs = [ mpiCheckPhaseHook ];
   installCheckPhase = ''
-    export OMP_NUM_THREADS=1
-
-    # Fix to make mpich run in a sandbox
-    export HYDRA_IFACE=lo
-    export OMPI_MCA_rmaps_base_oversubscribe=1
+    runHook preInstallCheck
 
     # run a simple water test
-    mpirun -np 2 $out/bin/nwchem $out/share/nwchem/QA/tests/h2o/h2o.nw > h2o.out
+    mpirun -np 2 $out/bin/nwchem $NWCHEM_TOP/QA/tests/h2o/h2o.nw > h2o.out
     grep "Total SCF energy" h2o.out  | grep 76.010538
+
+    runHook postInstallCheck
   '';
 
   passthru = { inherit mpi; };
 
   meta = with lib; {
     description = "Open Source High-Performance Computational Chemistry";
+    mainProgram = "nwchem";
     platforms = [ "x86_64-linux" ];
     maintainers = with maintainers; [ sheepforce markuskowa ];
     homepage = "https://nwchemgit.github.io";

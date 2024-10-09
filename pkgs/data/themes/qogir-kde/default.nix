@@ -1,19 +1,30 @@
 { lib
 , stdenvNoCC
 , fetchFromGitHub
-, gitUpdater
+, kdeclarative
+, plasma-framework
+, plasma-workspace
+, unstableGitUpdater
 }:
 
 stdenvNoCC.mkDerivation rec {
   pname = "qogir-kde";
-  version = "unstable-2022-07-08";
+  version = "0-unstable-2024-09-01";
 
   src = fetchFromGitHub {
     owner = "vinceliuice";
     repo = pname;
-    rev = "f240eae10978c7fee518f7a8be1c41a21a9d5c2e";
-    hash = "sha256-AV60IQWwgvLwDO3ylILwx1DkKadwo4isn3JX3WpKoxQ=";
+    rev = "dff5c1fbbaa0b824684c65063b635cf27bcb19ce";
+    hash = "sha256-uK9lJVRdMszA0am1/E4mfIN50yNKONH85M7+e0ERtn4=";
   };
+
+  # Propagate sddm theme dependencies to user env otherwise sddm does
+  # not find them. Putting them in buildInputs is not enough.
+  propagatedUserEnvPkgs = [
+    kdeclarative.bin
+    plasma-framework
+    plasma-workspace
+  ];
 
   postPatch = ''
     patchShebangs install.sh
@@ -21,6 +32,9 @@ stdenvNoCC.mkDerivation rec {
     substituteInPlace install.sh \
       --replace '$HOME/.local' $out \
       --replace '$HOME/.config' $out/share
+
+    substituteInPlace sddm/*/Main.qml \
+      --replace /usr $out
   '';
 
   installPhase = ''
@@ -36,10 +50,10 @@ stdenvNoCC.mkDerivation rec {
     runHook postInstall
   '';
 
-  passthru.updateScript = gitUpdater { };
+  passthru.updateScript = unstableGitUpdater { };
 
   meta = with lib; {
-    description = "A flat Design theme for KDE Plasma desktop";
+    description = "Flat Design theme for KDE Plasma desktop";
     homepage = "https://github.com/vinceliuice/Qogir-kde";
     license = licenses.gpl3Only;
     platforms = platforms.all;

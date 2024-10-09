@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
     lv2 libX11 libGL libGLU mesa
   ];
 
-  NIX_CFLAGS_COMPILE = [
+  env.NIX_CFLAGS_COMPILE = toString [
     # Needed with GCC 12
     "-Wno-error=array-bounds"
     "-Wno-error=stringop-overflow"
@@ -31,7 +31,7 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://dougal-s.github.io/Aether/";
-    description = "An algorithmic reverb LV2 based on Cloudseed";
+    description = "Algorithmic reverb LV2 based on Cloudseed";
     maintainers = [ maintainers.magnetophon ];
     platforms = platforms.linux;
     license = licenses.mit;

@@ -1,7 +1,9 @@
-{ lib, stdenv
+{ lib
+, stdenv
 , fetchurl
 , meson
 , ninja
+, adwaita-icon-theme
 , gtk3
 , libexif
 , libgphoto2
@@ -10,7 +12,6 @@
 , libxml2
 , vala
 , sqlite
-, webkitgtk_4_1
 , pkg-config
 , gnome
 , gst_all_1
@@ -27,23 +28,21 @@
 , desktop-file-utils
 , gdk-pixbuf
 , librsvg
-, wrapGAppsHook
+, wrapGAppsHook3
 , gobject-introspection
 , itstool
 , libsecret
+, libportal-gtk3
 , gsettings-desktop-schemas
-, python3
 }:
 
-# for dependencies see https://wiki.gnome.org/Apps/Shotwell/BuildingAndInstalling
-
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "shotwell";
-  version = "0.31.5";
+  version = "0.32.9";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "sha256-OwSPxs6ZsjLR4OqbjbB0CDyGyI07bWMTaiz4IXqkXBk=";
+    url = "mirror://gnome/sources/shotwell/${lib.versions.majorMinor finalAttrs.version}/shotwell-${finalAttrs.version}.tar.xz";
+    sha256 = "sha256-EjKjPcnBftI6oA2P8lUA5xC73JiZ1VtEFbaLdCnlYOs=";
   };
 
   nativeBuildInputs = [
@@ -54,8 +53,7 @@ stdenv.mkDerivation rec {
     itstool
     gettext
     desktop-file-utils
-    python3
-    wrapGAppsHook
+    wrapGAppsHook3
     gobject-introspection
   ];
 
@@ -67,7 +65,6 @@ stdenv.mkDerivation rec {
     libsoup_3
     libxml2
     sqlite
-    webkitgtk_4_1
     gst_all_1.gstreamer
     gst_all_1.gst-libav
     gst_all_1.gst-plugins-base
@@ -84,27 +81,24 @@ stdenv.mkDerivation rec {
     librsvg
     librest
     gcr
-    gnome.adwaita-icon-theme
+    adwaita-icon-theme
     libsecret
+    libportal-gtk3
   ];
-
-  postPatch = ''
-    chmod +x build-aux/meson/postinstall.py # patchShebangs requires executable file
-    patchShebangs build-aux/meson/postinstall.py
-  '';
 
   passthru = {
     updateScript = gnome.updateScript {
-      packageName = pname;
+      packageName = "shotwell";
       versionPolicy = "odd-unstable";
     };
   };
 
   meta = with lib; {
     description = "Popular photo organizer for the GNOME desktop";
-    homepage = "https://wiki.gnome.org/Apps/Shotwell";
+    mainProgram = "shotwell";
+    homepage = "https://gitlab.gnome.org/GNOME/shotwell";
     license = licenses.lgpl21Plus;
-    maintainers = with maintainers; [];
+    maintainers = with maintainers; [ bobby285271 ];
     platforms = platforms.linux;
   };
-}
+})

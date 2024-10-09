@@ -7,6 +7,7 @@
 , gettext
 , python3
 , gstreamer
+, graphene
 , orc
 , pango
 , libtheora
@@ -19,38 +20,44 @@
 , tremor # provides 'virbisidec'
 , libGL
 , gobject-introspection
-, enableX11 ? stdenv.isLinux
-, libXv
+, enableX11 ? stdenv.hostPlatform.isLinux
 , libXext
-, enableWayland ? stdenv.isLinux
+, libXi
+, libXv
+, libdrm
+, enableWayland ? stdenv.hostPlatform.isLinux
+, wayland-scanner
 , wayland
 , wayland-protocols
-, enableAlsa ? stdenv.isLinux
+, enableAlsa ? stdenv.hostPlatform.isLinux
 , alsa-lib
-# Enabling Cocoa seems to currently not work, giving compile
-# errors. Suspected is that a newer version than clang
-# is needed than 5.0 but it is not clear.
-, enableCocoa ? false
+# TODO: fix once x86_64-darwin sdk updated
+, enableCocoa ? (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64)
 , Cocoa
 , OpenGL
 , enableGl ? (enableX11 || enableWayland || enableCocoa)
-, enableCdparanoia ? (!stdenv.isDarwin)
+, enableCdparanoia ? (!stdenv.hostPlatform.isDarwin)
 , cdparanoia
 , glib
 , testers
+# Checks meson.is_cross_build(), so even canExecute isn't enough.
+, enableDocumentation ? stdenv.hostPlatform == stdenv.buildPlatform
+, hotdoc
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gst-plugins-base";
-  version = "1.20.3";
+  version = "1.24.3";
 
   outputs = [ "out" "dev" ];
+
+  separateDebugInfo = true;
 
   src = let
     inherit (finalAttrs) pname version;
   in fetchurl {
     url = "https://gstreamer.freedesktop.org/src/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "sha256-fjCz3YGnA4D/dVT5mEcdaZb/drvm/FRHCW+FHiRHPJ8=";
+    hash = "sha256-8QlDl+qnky8G5X67sHWqM6osduS3VjChawLI1K9Ggy4=";
   };
 
   strictDeps = true;
@@ -66,13 +73,15 @@ stdenv.mkDerivation (finalAttrs: {
     orc
     glib
     gstreamer
-    # docs
-    # TODO add hotdoc here
     gobject-introspection
-  ] ++ lib.optional enableWayland wayland;
+  ] ++ lib.optionals enableDocumentation [
+    hotdoc
+  ] ++ lib.optionals enableWayland [
+    wayland-scanner
+  ];
 
   buildInputs = [
-    gobject-introspection
+    graphene
     orc
     libtheora
     libintl
@@ -81,16 +90,18 @@ stdenv.mkDerivation (finalAttrs: {
     libpng
     libjpeg
     tremor
-    libGL
     pango
-  ] ++ lib.optionals (!stdenv.isDarwin) [
+  ] ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
+    libdrm
+    libGL
     libvisual
-  ] ++ lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     OpenGL
   ] ++ lib.optionals enableAlsa [
     alsa-lib
   ] ++ lib.optionals enableX11 [
     libXext
+    libXi
     libXv
   ] ++ lib.optionals enableWayland [
     wayland
@@ -100,14 +111,15 @@ stdenv.mkDerivation (finalAttrs: {
 
   propagatedBuildInputs = [
     gstreamer
+  ] ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
+    libdrm
   ];
 
   mesonFlags = [
     "-Dexamples=disabled" # requires many dependencies and probably not useful for our users
-    "-Ddoc=disabled" # `hotdoc` not packaged in nixpkgs as of writing
-    "-Dgl-graphene=disabled" # not packaged in nixpkgs as of writing
     # See https://github.com/GStreamer/gst-plugins-base/blob/d64a4b7a69c3462851ff4dcfa97cc6f94cd64aef/meson_options.txt#L15 for a list of choices
     "-Dgl_winsys=${lib.concatStringsSep "," (lib.optional enableX11 "x11" ++ lib.optional enableWayland "wayland" ++ lib.optional enableCocoa "cocoa")}"
+    (lib.mesonEnable "doc" enableDocumentation)
   ] ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
     "-Dtests=disabled"
   ]
@@ -116,7 +128,8 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optional (!enableGl) "-Dgl=disabled"
   ++ lib.optional (!enableAlsa) "-Dalsa=disabled"
   ++ lib.optional (!enableCdparanoia) "-Dcdparanoia=disabled"
-  ++ lib.optionals stdenv.isDarwin [
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    "-Ddrm=disabled"
     "-Dlibvisual=disabled"
   ];
 

@@ -4,7 +4,7 @@
 , # Incompatible licenses, LGPLv3 - GPLv2
   enableGuile        ? false,                                         guile ? null
 , enablePython       ? false,                                         python ? null
-, enablePerl         ? (!stdenv.isDarwin) && (stdenv.hostPlatform == stdenv.buildPlatform), perl ? null
+, enablePerl         ? (!stdenv.hostPlatform.isDarwin) && (stdenv.hostPlatform == stdenv.buildPlatform), perl ? null
 # re-add javascript support when upstream supports modern spidermonkey
 }:
 
@@ -13,20 +13,20 @@ assert enablePython -> python != null;
 
 stdenv.mkDerivation rec {
   pname = "elinks";
-  version = "0.16.0";
+  version = "0.17.1.1";
 
   src = fetchFromGitHub {
     owner = "rkd77";
-    repo = "felinks";
+    repo = "elinks";
     rev = "v${version}";
-    sha256 = "sha256-4+V1j78sjs3/6SnVLO34jCcNuegpZan8Ykd8Gy0vc3k=";
+    hash = "sha256-d5bc6SZ8UQuvVJZjWziy4pi/iIiDAnpU9YTlrlfkdoo=";
   };
 
   buildInputs = [
     ncurses libX11 bzip2 zlib brotli zstd xz
     openssl libidn tre expat libev
   ]
-    ++ lib.optional stdenv.isLinux gpm
+    ++ lib.optional stdenv.hostPlatform.isLinux gpm
     ++ lib.optional enableGuile guile
     ++ lib.optional enablePython python
     ++ lib.optional enablePerl perl
@@ -38,6 +38,7 @@ stdenv.mkDerivation rec {
     "--enable-finger"
     "--enable-html-highlight"
     "--enable-gopher"
+    "--enable-gemini"
     "--enable-cgi"
     "--enable-bittorrent"
     "--enable-nntp"
@@ -53,8 +54,9 @@ stdenv.mkDerivation rec {
     ;
 
   meta = with lib; {
-    description = "Full-featured text-mode web browser (package based on the fork felinks)";
-    homepage = "https://github.com/rkd77/felinks";
+    description = "Full-featured text-mode web browser";
+    mainProgram = "elinks";
+    homepage = "https://github.com/rkd77/elinks";
     license = licenses.gpl2;
     platforms = with platforms; linux ++ darwin;
     maintainers = with maintainers; [ iblech gebner ];

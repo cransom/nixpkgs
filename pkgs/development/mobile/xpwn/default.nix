@@ -14,7 +14,7 @@ stdenv.mkDerivation rec {
   # Workaround build failure on -fno-common toolchains:
   #   ld: ../ipsw-patch/libxpwn.a(libxpwn.c.o):(.bss+0x4): multiple definition of
   #     `endianness'; CMakeFiles/xpwn-bin.dir/src/xpwn.cpp.o:(.bss+0x0): first defined here
-  NIX_CFLAGS_COMPILE = "-fcommon";
+  env.NIX_CFLAGS_COMPILE = "-fcommon";
 
   preConfigure = ''
     rm BUILD # otherwise `mkdir build` fails on case insensitive file systems
@@ -30,7 +30,7 @@ stdenv.mkDerivation rec {
   buildInputs = [ zlib libpng bzip2 libusb-compat-0_1 openssl ];
 
   meta = with lib; {
-    broken = stdenv.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
     homepage    = "http://planetbeing.lighthouseapp.com/projects/15246-xpwn";
     description = "Custom NOR firmware loader/IPSW generator for the iPhone";
     license     = licenses.gpl3Plus;

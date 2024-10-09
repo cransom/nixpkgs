@@ -1,12 +1,12 @@
 { lib, fetchFromGitHub, stdenvNoCC }:
 
-stdenvNoCC.mkDerivation (self: {
+stdenvNoCC.mkDerivation {
   pname = "junction";
   version = "2014-05-29";
 
   src = fetchFromGitHub {
     owner = "theleagueof";
-    repo = self.pname;
+    repo = "junction";
     rev = "fb73260e86dd301b383cf6cc9ca8e726ef806535";
     hash = "sha256-Zqh23HPWGed+JkADYjYdsVNRxqJDvC9xhnqAqWZ3Eu8=";
   };
@@ -31,4 +31,4 @@ stdenvNoCC.mkDerivation (self: {
     license = lib.licenses.ofl;
     maintainers = with lib.maintainers; [ minijackson ];
   };
-})
+}

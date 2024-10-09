@@ -1,25 +1,29 @@
-{ lib, buildPythonPackage, fetchFromGitHub, fetchurl, pytestCheckHook, p7zip,
-  cabextract, zip, lzip, zpaq, gnutar, gnugrep, diffutils, file,
-  gzip, bzip2, xz}:
-
-# unrar is unfree, as well as 7z with unrar support, not including it (patool doesn't support unar)
-# it will still use unrar if present in the path
+{
+  lib,
+  stdenv,
+  buildPythonPackage,
+  fetchFromGitHub,
+  pytestCheckHook,
+  p7zip,
+  cabextract,
+  zip,
+  lzip,
+  zpaq,
+  gnutar,
+  unar, # Free alternative to unrar
+  gnugrep,
+  diffutils,
+  file,
+  gzip,
+  bzip2,
+  xz,
+}:
 
 let
-  # FIXME: backport a patch in `file` that seemingly only affects this package
-  # Revert when fix to main package makes it through staging.
-  file' = file.overrideAttrs(old: {
-    patches = (old.patches or []) ++ [
-      (fetchurl {
-        url = "https://gitweb.gentoo.org/repo/gentoo.git/plain/sys-apps/file/files/file-5.44-decompress-empty.patch?h=dfc57da515a2aaf085bea68267cc727f1bfaa691";
-        hash = "sha256-fUzRQAlLWczBmR5iA1Gk66mHjP40MJcMdgCtm2+u1SQ=";
-      })
-    ];
-  });
-
   compression-utilities = [
     p7zip
     gnutar
+    unar
     cabextract
     zip
     lzip
@@ -28,20 +32,21 @@ let
     gnugrep
     diffutils
     bzip2
-    file'
+    file
     xz
   ];
 in
 buildPythonPackage rec {
   pname = "patool";
-  version = "1.12";
+  version = "2.1.1";
+  format = "setuptools";
 
   #pypi doesn't have test data
   src = fetchFromGitHub {
     owner = "wummel";
     repo = pname;
     rev = "upstream/${version}";
-    sha256 = "0v4r77sm3yzh7y1whfwxmp01cchd82jbhvbg9zsyd2yb944imzjy";
+    hash = "sha256-B2P6JldMOAxr4WS+wST+kRVvEm41zH3Nh5LLKoFOws4=";
   };
 
   postPatch = ''
@@ -56,10 +61,11 @@ buildPythonPackage rec {
     "test_unzip_file"
     "test_zip"
     "test_zip_file"
-  ];
+  ] ++ lib.optionals stdenv.hostPlatform.isDarwin [ "test_ar" ];
 
   meta = with lib; {
     description = "portable archive file manager";
+    mainProgram = "patool";
     homepage = "https://wummel.github.io/patool/";
     license = licenses.gpl3;
     maintainers = with maintainers; [ marius851000 ];

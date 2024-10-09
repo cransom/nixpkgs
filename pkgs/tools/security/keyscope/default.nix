@@ -12,20 +12,20 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "keyscope";
-  version = "1.2.3";
+  version = "1.3.0";
 
   src = fetchFromGitHub {
     owner = "spectralops";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-RKeEumj9HuifEXE8g5G7EsIalGD1vLRawh59s/ykUmg=";
+    sha256 = "sha256-SrBtgirg52q7gM3GZsJsV8ASACvb4sYv5HDbyItpjbk=";
   };
 
-  cargoSha256 = "sha256-8lTwczuOgPhzwGcQ2KoqK5Zf3HS3uwsok036l+12Xb0=";
+  cargoHash = "sha256-MFP3AqlfaclmZxRwaWFw6hsZwCQMRKJEyFEyUN+QLqo=";
 
   nativeBuildInputs = [ pkg-config ];
 
-  buildInputs = [ openssl ] ++ lib.optionals stdenv.isDarwin [
+  buildInputs = [ openssl ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
     DiskArbitration
     Foundation
     IOKit
@@ -40,7 +40,8 @@ rustPlatform.buildRustPackage rec {
   VERGEN_GIT_SEMVER = "v${version}";
 
   meta = with lib; {
-    description = "A key and secret workflow (validation, invalidation, etc.) tool";
+    description = "Key and secret workflow (validation, invalidation, etc.) tool";
+    mainProgram = "keyscope";
     homepage = "https://github.com/spectralops/keyscope";
     changelog = "https://github.com/spectralops/keyscope/blob/v${version}/CHANGELOG.md";
     license = licenses.asl20;

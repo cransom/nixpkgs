@@ -3,42 +3,43 @@
 , fetchFromGitHub
 , git
 , nixosTests
-, nodejs-16_x
 , python3
+, vaultwarden
 }:
 
 let
-  buildNpmPackage' = buildNpmPackage.override { nodejs = nodejs-16_x; };
+  version = "2024.6.2c";
 
-  version = "2022.12.0";
+  suffix = lib.head (lib.match "[0-9.]*([a-z]*)" version);
 
   bw_web_builds = fetchFromGitHub {
     owner = "dani-garcia";
     repo = "bw_web_builds";
     rev = "v${version}";
-    hash = "sha256-4yUE0ySUCKmmbca+T8qjqSO0AHZEUAHZ4nheRjpDnZo=";
+    hash = "sha256-Gd8yQx9j6ieUvaM6IPSELNRy83y0cBkBwLYMqk8OIjU=";
   };
-in buildNpmPackage' {
+
+in buildNpmPackage rec {
   pname = "vaultwarden-webvault";
   inherit version;
 
   src = fetchFromGitHub {
     owner = "bitwarden";
     repo = "clients";
-    rev = "web-v${version}";
-    hash = "sha256-CsbnnP12P7JuGDOm5Ia73SzET/jCx3qRbz9vdUf7lCA=";
+    rev = "web-v${lib.removeSuffix suffix version}";
+    hash = "sha256-HMQ0oQ04WkLlUgsYt6ZpcziDq05mnSA0+VnJCpteceg=";
   };
 
-  npmDepsHash = "sha256-wWOtVGNOzY2s82nfQDuWgA4ukpJxJr8Z7Y+rFPq2QdU=";
+  npmDepsHash = "sha256-zMzQEM5mV14gewzYhy1F2bNEugXjZSOviYwYVV2Cb8c=";
 
   postPatch = ''
     ln -s ${bw_web_builds}/{patches,resources} ..
-    PATH="${git}/bin:$PATH" VAULT_VERSION=${bw_web_builds.rev} \
+    PATH="${git}/bin:$PATH" VAULT_VERSION="${lib.removePrefix "web-" src.rev}" \
       bash ${bw_web_builds}/scripts/apply_patches.sh
   '';
 
   nativeBuildInputs = [
-    python3
+    (python3.withPackages (ps: [ ps.setuptools ]))
   ];
 
   makeCacheWritable = true;
@@ -50,6 +51,8 @@ in buildNpmPackage' {
   npmBuildFlags = [
     "--workspace" "apps/web"
   ];
+
+  npmFlags = [ "--legacy-peer-deps" ];
 
   installPhase = ''
     runHook preInstall
@@ -66,8 +69,9 @@ in buildNpmPackage' {
   meta = with lib; {
     description = "Integrates the web vault into vaultwarden";
     homepage = "https://github.com/dani-garcia/bw_web_builds";
+    changelog = "https://github.com/dani-garcia/bw_web_builds/releases/tag/v${version}";
     platforms = platforms.all;
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ dotlambda msteen mic92 ];
+    inherit (vaultwarden.meta) maintainers;
   };
 }
